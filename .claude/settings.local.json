@@ -23,7 +23,8 @@
       "Bash(git commit -m ' *)",
       "Bash(git remote *)",
       "Bash(git pull *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git commit *)"
     ]
   }
 }
