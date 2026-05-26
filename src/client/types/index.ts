@@ -18,6 +18,7 @@ export interface TaskWithStatus extends Task {
   isCheckedIn: boolean;
   checkInId: number | null;
   quality: number | null;
+  overdueDays: number;
 }
 
 export interface CheckIn {

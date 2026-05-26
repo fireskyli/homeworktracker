@@ -24,7 +24,9 @@
       "Bash(git remote *)",
       "Bash(git pull *)",
       "Bash(git push *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(tasklist *)",
+      "Bash(netstat -ano)"
     ]
   }
 }

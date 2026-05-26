@@ -22,12 +22,17 @@ export default function TaskItem({ task }: Props) {
         <span className="text-3xl">{task.emoji}</span>
         <div>
           <h3 className="font-medium text-base text-gray-800">{task.name}</h3>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span className={`text-xs px-2 py-0.5 rounded-full ${color}`}>
               {task.subject}
             </span>
             {task.estimatedMin > 0 && (
               <span className="text-xs text-gray-400">⏱ {task.estimatedMin}分钟</span>
+            )}
+            {task.overdueDays > 0 && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">
+                ⏰ 已顺延 {task.overdueDays} 天
+              </span>
             )}
           </div>
         </div>

@@ -33,13 +33,19 @@ taskRouter.get('/today', async (_req, res) => {
     });
     const checkinMap = new Map(todayCheckins.map(c => [c.taskId, c]));
 
+    // 获取所有打卡记录（用于判断一次性任务是否已完成过）
+    const allCheckins = await prisma.checkIn.findMany({
+      select: { taskId: true },
+    });
+    const completedTaskIds = new Set(allCheckins.map(c => c.taskId));
+
     const result = tasks
       .filter(task => {
         if (task.repeatType === 'daily') return true;
         if (task.repeatType === 'once') {
-          // 一次性任务：用 startDate 匹配，没有 startDate 则用 createdAt
+          // 一次性任务：startDate <= 今天 且 从未完成过打卡（未完成则顺延）
           const taskDate = task.startDate || task.createdAt.slice(0, 10);
-          return taskDate === todayStr;
+          return taskDate <= todayStr && !completedTaskIds.has(task.id);
         }
         if (task.repeatType === 'weekly') {
           const days: number[] = JSON.parse(task.repeatDays);
@@ -47,12 +53,21 @@ taskRouter.get('/today', async (_req, res) => {
         }
         return false;
       })
-      .map(task => ({
-        ...task,
-        isCheckedIn: checkinMap.has(task.id),
-        checkInId: checkinMap.get(task.id)?.id ?? null,
-        quality: checkinMap.get(task.id)?.quality ?? null,
-      }));
+      .map(task => {
+        const taskDate = task.repeatType === 'once'
+          ? (task.startDate || task.createdAt.slice(0, 10))
+          : null;
+        const overdueDays = taskDate && taskDate < todayStr
+          ? Math.floor((now.getTime() - new Date(taskDate).getTime()) / 86400000)
+          : 0;
+        return {
+          ...task,
+          isCheckedIn: checkinMap.has(task.id),
+          checkInId: checkinMap.get(task.id)?.id ?? null,
+          quality: checkinMap.get(task.id)?.quality ?? null,
+          overdueDays,
+        };
+      });
 
     res.json(result);
   } catch (err) {
