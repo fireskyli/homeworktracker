@@ -11,6 +11,7 @@
 - **家长模式** — 密码保护的任务管理界面
 - **响应式** — 适配桌面、平板、手机
 - **局域网访问** — 手机在同一 WiFi 下可直接访问
+- **数据备份** — 自动备份（每 6 小时），支持手动备份和恢复
 
 ## 技术栈
 
@@ -242,6 +243,7 @@ homeworkertacker/
 │   │   ├── index.ts       # 入口
 │   │   ├── app.ts         # Express 配置
 │   │   ├── db.ts          # Prisma 连接
+│   │   ├── backup.ts      # 自动备份模块
 │   │   └── routes/        # API 路由
 │   └── client/            # 前端
 │       ├── App.tsx        # 根组件
@@ -250,6 +252,7 @@ homeworkertacker/
 │       ├── hooks/         # 数据 hooks
 │       └── types/         # 类型定义
 ├── uploads/               # 作业照片存储
+├── backups/               # 数据库自动备份（本地保留，不提交 Git）
 ├── package.json
 ├── vite.config.ts
 ├── tailwind.config.js
@@ -261,6 +264,36 @@ homeworkertacker/
 - **家长密码**：`1234`（首次使用后请在设置页修改）
 
 ## 数据备份
+
+### 自动备份
+
+服务内置自动备份机制：
+- 服务启动时**立即备份一次**
+- 之后**每 6 小时**自动备份
+- 保留最近 **30 份**备份，过期自动清理
+- 备份存储在 `backups/` 目录（本地保留，不提交 Git）
+
+### 备份管理 API
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `/api/backup` | GET | 查看备份列表 |
+| `/api/backup` | POST | 手动触发备份 |
+| `/api/backup/restore` | POST | 从指定备份恢复 |
+
+**手动备份：**
+```bash
+curl -X POST http://localhost:3000/api/backup
+```
+
+**恢复数据（恢复前会自动创建安全备份）：**
+```bash
+curl -X POST http://localhost:3000/api/backup/restore \
+  -H "Content-Type: application/json" \
+  -d '{"name": "homework_2026-05-26_12-30-00.db"}'
+```
+
+### Git 远程备份
 
 数据库文件位于 `prisma/homework.db`，已纳入 Git 管理。每次数据变更后提交即可备份到 GitHub：
 
