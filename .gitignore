@@ -15,6 +15,9 @@ dist/
 .DS_Store
 Thumbs.db
 
+# Backups (本地自动备份，不提交 Git)
+backups/
+
 # Logs
 *.log
 npm-debug.log*

@@ -5,6 +5,7 @@ import { checkinRouter } from './routes/checkins';
 import { statsRouter } from './routes/stats';
 import { uploadRouter } from './routes/upload';
 import { settingsRouter } from './routes/settings';
+import { backupRouter } from './routes/backup';
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use('/api/checkins', checkinRouter);
 app.use('/api/stats', statsRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/backup', backupRouter);
 
 // ── Production: serve built frontend ──────────────────
 if (process.env.NODE_ENV === 'production') {
