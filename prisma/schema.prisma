@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Task {
+  id            Int        @id @default(autoincrement())
+  name          String
+  subject       String
+  emoji         String     @default("📚")
+  estimatedMin  Int        @default(0)
+  deadlineTime  String?
+  startDate     String?                   // 任务生效日期 YYYY-MM-DD（一次性任务用）
+  repeatType    String     @default("once") // once | daily | weekly
+  repeatDays    String     @default("[]")   // JSON array [1,3,5]
+  sortOrder     Int        @default(0)
+  isActive       Int        @default(1)      // 1=active, 0=deleted
+  createdAt     String
+  updatedAt     String
+  checkins      CheckIn[]
+}
+
+model CheckIn {
+  id           Int     @id @default(autoincrement())
+  taskId       Int
+  task         Task    @relation(fields: [taskId], references: [id])
+  date         String  // YYYY-MM-DD
+  completedAt  String  // ISO8601
+  quality      Int?    // 1-3 stars
+  photoUrl     String?
+  note         String?
+  isMakeup     Int     @default(0)
+
+  @@unique([taskId, date])
+}
+
+model Setting {
+  key   String @id
+  value String
+}
