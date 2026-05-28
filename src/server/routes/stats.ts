@@ -245,7 +245,7 @@ statsRouter.get('/weekly', async (req, res) => {
         dailyBreakdown[c.date].count++;
         const base = _taskPointsMap.get(c.taskId) || 0;
         const q = c.quality || 0;
-        const earned = q > 0 ? Math.round(base * (q / 3)) : 0;
+        const earned = q > 0 ? Math.min(q, base) : 0;
         dailyBreakdown[c.date].pointsEarned += earned;
         dailyBreakdown[c.date].tasks.push({
           name: c.task.name,

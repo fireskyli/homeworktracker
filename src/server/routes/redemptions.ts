@@ -1,6 +1,12 @@
 import { Router } from 'express';
 import { prisma, calcPointsBalance } from '../db';
 
+// 验证家长密码
+async function verifyParentPassword(password: string): Promise<boolean> {
+  const setting = await prisma.setting.findUnique({ where: { key: 'parent_password' } });
+  return setting?.value === password;
+}
+
 export const redemptionsRouter = Router();
 
 // 获取兑换记录列表

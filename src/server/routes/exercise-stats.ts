@@ -194,3 +194,80 @@ exerciseStatsRouter.get('/history', async (req, res) => {
     res.status(500).json({ error: '获取历史记录失败' });
   }
 });
+
+// 周报数据（运动）
+exerciseStatsRouter.get('/weekly', async (req, res) => {
+  try {
+    const now = new Date();
+    const baseDate = req.query.date ? String(req.query.date) : now.toISOString().split('T')[0];
+    const base = new Date(baseDate);
+
+    const dayOfWeek = base.getDay() || 7;
+    const monday = new Date(base);
+    monday.setDate(base.getDate() - dayOfWeek + 1);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    const mondayStr = monday.toISOString().split('T')[0];
+    const sundayStr = sunday.toISOString().split('T')[0];
+
+    const exercises = await prisma.exercise.findMany({
+      where: { date: { gte: mondayStr, lte: sundayStr } },
+      include: { exerciseType: { select: { id: true, name: true, emoji: true, unit: true } } },
+      orderBy: [{ date: 'asc' }, { completedAt: 'asc' }],
+    });
+
+    // 每日明细（7 天固定槽）
+    const dailyBreakdown: Record<string, {
+      date: string;
+      count: number;
+      suns: number;
+      exercises: { id: number; name: string; emoji: string; quality: number | null; sets: string | null }[];
+    }> = {};
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const s = d.toISOString().split('T')[0];
+      dailyBreakdown[s] = { date: s, count: 0, suns: 0, exercises: [] };
+    }
+    for (const e of exercises) {
+      if (!dailyBreakdown[e.date]) continue;
+      dailyBreakdown[e.date].count++;
+      dailyBreakdown[e.date].suns += e.quality || 0;
+      dailyBreakdown[e.date].exercises.push({
+        id: e.id,
+        name: e.exerciseType.name,
+        emoji: e.exerciseType.emoji,
+        quality: e.quality,
+        sets: e.sets,
+      });
+    }
+
+    // 类型分布
+    const typeDist: Record<string, { name: string; emoji: string; count: number; suns: number }> = {};
+    for (const e of exercises) {
+      const key = String(e.exerciseTypeId);
+      if (!typeDist[key]) typeDist[key] = { name: e.exerciseType.name, emoji: e.exerciseType.emoji, count: 0, suns: 0 };
+      typeDist[key].count++;
+      typeDist[key].suns += e.quality || 0;
+    }
+
+    const totalExercises = exercises.length;
+    const totalSuns = exercises.reduce((s, e) => s + (e.quality || 0), 0);
+    const exerciseDays = new Set(exercises.map(e => e.date)).size;
+    const makeupCount = exercises.filter(e => e.isMakeup === 1).length;
+
+    res.json({
+      weekStart: mondayStr,
+      weekEnd: sundayStr,
+      totalExercises,
+      totalSuns,
+      exerciseDays,
+      makeupCount,
+      dailyBreakdown: Object.values(dailyBreakdown),
+      typeDist: Object.values(typeDist),
+    });
+  } catch (err) {
+    res.status(500).json({ error: '运动周报生成失败' });
+  }
+});

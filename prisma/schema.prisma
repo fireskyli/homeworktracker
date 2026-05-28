@@ -40,12 +40,27 @@ model CheckIn {
 }
 
 model Redemption {
-  id        Int      @id @default(autoincrement())
-  name      String   // 兑换内容
-  points    Int      // 消耗积分
-  date      String   // YYYY-MM-DD
-  photoUrl  String?
-  createdAt String
+  id          Int      @id @default(autoincrement())
+  name        String   // 兑换内容
+  points      Int      // 消耗积分
+  date        String   // YYYY-MM-DD
+  photoUrl    String?
+  createdAt   String
+  productId   Int?     // 关联商品
+  status      String   @default("pending") // pending | approved | rejected
+  appliedAt   String?  // 申请时间
+  approvedAt  String?  // 审批时间
+}
+
+model Product {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+  points      Int
+  photoUrl    String?
+  isActive    Int     @default(1)
+  sortOrder   Int     @default(0)
+  createdAt   String
 }
 
 model ExerciseType {

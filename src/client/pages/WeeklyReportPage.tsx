@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { formatWeekRange, getWeekDates } from '../utils/date';
 import { fetchWeeklyReport } from '../hooks/useStats';
-import type { WeeklyReport } from '../types';
+import { fetchExerciseWeekly } from '../hooks/useExerciseStats';
+import type { WeeklyReport, ExerciseWeeklyReport } from '../types';
 
 export default function WeeklyReportPage() {
   const [report, setReport] = useState<WeeklyReport | null>(null);
+  const [exerciseReport, setExerciseReport] = useState<ExerciseWeeklyReport | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -18,8 +20,12 @@ export default function WeeklyReportPage() {
       setLoading(true);
       setError('');
       const targetDate = getWeekDates(weekOffset).monday;
-      const data = await fetchWeeklyReport(targetDate);
+      const [data, exData] = await Promise.all([
+        fetchWeeklyReport(targetDate),
+        fetchExerciseWeekly(targetDate),
+      ]);
       setReport(data);
+      setExerciseReport(exData);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -229,7 +235,7 @@ export default function WeeklyReportPage() {
 
       {/* 其他统计 */}
       {(report.makeupCount > 0 || report.photoCount > 0) && (
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6">
           <h2 className="text-sm font-medium text-gray-600 mb-3">其他</h2>
           <div className="flex gap-4">
             {report.makeupCount > 0 && (
@@ -245,6 +251,74 @@ export default function WeeklyReportPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* 运动数据 */}
+      {(exerciseReport?.totalExercises ?? 0) > 0 && (
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+          <h2 className="text-sm font-medium text-gray-600 mb-3">🏃 本周运动</h2>
+
+          {/* 运动概览卡片 */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="bg-orange-50 rounded-lg p-3 text-center">
+              <div className="text-xs text-orange-600 mb-1">本周运动次数</div>
+              <p className="text-2xl font-bold text-orange-600">{exerciseReport.totalExercises}</p>
+            </div>
+            <div className="bg-yellow-50 rounded-lg p-3 text-center">
+              <div className="text-xs text-yellow-600 mb-1">本周获得太阳</div>
+              <p className="text-2xl font-bold text-yellow-600">☀️ {exerciseReport.totalSuns}</p>
+            </div>
+          </div>
+
+          {/* 每日运动明细 */}
+          <div className="flex flex-col gap-2 mb-4">
+            {exerciseReport.dailyBreakdown.filter(d => d.count > 0).map(day => (
+              <div key={day.date} className="border-t border-gray-50 pt-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-gray-500">
+                    {new Date(day.date).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', weekday: 'short' })}
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    运动 {day.count} 次 · {day.suns > 0 && `☀️${day.suns}`}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {day.exercises.map((ex, j) => (
+                    <span key={j} className="text-xs bg-gray-50 px-2 py-0.5 rounded-full">
+                      {ex.emoji} {ex.name}
+                      {ex.quality && <span className="ml-0.5">{'☀️'.repeat(ex.quality)}</span>}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 类型分布 */}
+          {exerciseReport.typeDist.length > 0 && (
+            <div>
+              <h3 className="text-xs font-medium text-gray-500 mb-2">运动类型分布</h3>
+              <div className="flex flex-col gap-2">
+                {[...exerciseReport.typeDist].sort((a, b) => b.count - a.count).map(t => {
+                  const maxCount = Math.max(...exerciseReport.typeDist.map(x => x.count));
+                  const pct = maxCount > 0 ? Math.round((t.count / maxCount) * 100) : 0;
+                  return (
+                    <div key={t.name} className="flex items-center gap-3">
+                      <span className="text-sm w-16 text-gray-600">{t.emoji} {t.name}</span>
+                      <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-orange-400 rounded-full transition-all"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-400 w-16 text-right">{t.count}次 · ☀️{t.suns}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1,4 +1,4 @@
-import { ExerciseStatsOverview } from '../types';
+import { ExerciseStatsOverview, ExerciseWeeklyReport } from '../types';
 
 const API = '/api/exercise-stats';
 
@@ -59,5 +59,13 @@ export async function fetchExerciseHistory(params?: {
   if (params?.pageSize) sp.set('pageSize', String(params.pageSize));
   const res = await fetch(`${API}/history?${sp}`);
   if (!res.ok) throw new Error('获取运动历史失败');
+  return res.json();
+}
+
+export async function fetchExerciseWeekly(date?: string): Promise<ExerciseWeeklyReport> {
+  const sp = new URLSearchParams();
+  if (date) sp.set('date', date);
+  const res = await fetch(`${API}/weekly?${sp}`);
+  if (!res.ok) throw new Error('获取运动周报失败');
   return res.json();
 }

@@ -87,6 +87,21 @@ export interface Redemption {
   date: string;
   photoUrl: string | null;
   createdAt: string;
+  productId?: number | null;
+  status?: string; // pending | approved | rejected
+  appliedAt?: string | null;
+  approvedAt?: string | null;
+}
+
+export interface Product {
+  id: number;
+  name: string;
+  description: string | null;
+  points: number;
+  photoUrl: string | null;
+  isActive: number;
+  sortOrder: number;
+  createdAt: string;
 }
 
 export interface ExerciseType {
@@ -124,4 +139,20 @@ export interface ExerciseStatsOverview {
   totalSuns: number;
   currentStreak: number;
   totalPoints: number;
+}
+
+export interface ExerciseWeeklyReport {
+  weekStart: string;
+  weekEnd: string;
+  totalExercises: number;
+  totalSuns: number;
+  exerciseDays: number;
+  makeupCount: number;
+  dailyBreakdown: {
+    date: string;
+    count: number;
+    suns: number;
+    exercises: { id: number; name: string; emoji: string; quality: number | null; sets: string | null }[];
+  }[];
+  typeDist: { name: string; emoji: string; count: number; suns: number }[];
 }

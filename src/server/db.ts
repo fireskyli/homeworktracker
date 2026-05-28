@@ -35,7 +35,7 @@ export async function initPresetExercises() {
 
 /**
  * 计算积分余额（作业积分 + 运动积分 - 兑换消耗）
- * 作业积分：task.points × (quality/3)，quality=0 不得分
+ * 作业积分：min(quality, task.points)，quality=0 不得分（1星=1分, 2星=2分, 3星=3分，上限为任务基础积分）
  * 运动积分：每个太阳☀️ = 1 积分
  */
 export async function calcPointsBalance(): Promise<{ totalEarned: number; totalSpent: number; balance: number }> {
@@ -51,7 +51,7 @@ export async function calcPointsBalance(): Promise<{ totalEarned: number; totalS
   for (const c of checkins) {
     const base = c.task.points || 0;
     const q = c.quality || 0;
-    if (q > 0) totalEarned += Math.round(base * (q / 3));
+    if (q > 0) totalEarned += Math.min(q, base);
   }
   // 运动积分：每个太阳=1积分
   for (const e of exercises) {
