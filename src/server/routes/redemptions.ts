@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { prisma } from '../db';
+import { prisma, calcPointsBalance } from '../db';
 
 export const redemptionsRouter = Router();
 
@@ -76,28 +76,8 @@ redemptionsRouter.delete('/:id', async (req, res) => {
 // 获取积分余额（累计获得 - 累计消耗）
 redemptionsRouter.get('/balance', async (_req, res) => {
   try {
-    // 所有打卡记录
-    const checkins = await prisma.checkIn.findMany({
-      include: { task: { select: { points: true } } },
-    });
-    let totalEarned = 0;
-    for (const c of checkins) {
-      const base = c.task.points || 0;
-      const q = c.quality || 0;
-      totalEarned += q > 0 ? Math.round(base * (q / 3)) : 0;
-    }
-
-    // 所有兑换记录
-    const redemptionSum = await prisma.redemption.aggregate({
-      _sum: { points: true },
-    });
-    const totalSpent = redemptionSum._sum.points || 0;
-
-    res.json({
-      totalEarned,
-      totalSpent,
-      balance: totalEarned - totalSpent,
-    });
+    const { totalEarned, totalSpent, balance } = await calcPointsBalance();
+    res.json({ totalEarned, totalSpent, balance });
   } catch (err) {
     res.status(500).json({ error: '查询余额失败' });
   }

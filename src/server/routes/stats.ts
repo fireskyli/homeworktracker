@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { prisma } from '../db';
+import { prisma, calcPointsBalance } from '../db';
 
 export const statsRouter = Router();
 
@@ -84,25 +84,8 @@ statsRouter.get('/overview', async (_req, res) => {
 // 积分余额
 statsRouter.get('/points-balance', async (_req, res) => {
   try {
-    const [checkins, redemptions, exercises] = await Promise.all([
-      prisma.checkIn.findMany({
-        include: { task: { select: { points: true } } },
-      }),
-      prisma.redemption.aggregate({ _sum: { points: true } }),
-      prisma.exercise.findMany({ select: { quality: true } }),
-    ]);
-    let totalEarned = 0;
-    for (const c of checkins) {
-      const base = c.task.points || 0;
-      const q = c.quality || 0;
-      if (q > 0) totalEarned += Math.round(base * (q / 3));
-    }
-    // 运动积分：每个太阳=1积分
-    for (const e of exercises) {
-      totalEarned += e.quality || 0;
-    }
-    const totalSpent = redemptions._sum.points || 0;
-    res.json({ totalEarned, totalSpent, balance: totalEarned - totalSpent });
+    const { totalEarned, totalSpent, balance } = await calcPointsBalance();
+    res.json({ totalEarned, totalSpent, balance });
   } catch (err) {
     res.status(500).json({ error: '查询失败' });
   }

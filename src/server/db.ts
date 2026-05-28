@@ -32,3 +32,32 @@ export async function initPresetExercises() {
   }
   console.log('[Init] 预设运动类型已就绪');
 }
+
+/**
+ * 计算积分余额（作业积分 + 运动积分 - 兑换消耗）
+ * 作业积分：task.points × (quality/3)，quality=0 不得分
+ * 运动积分：每个太阳☀️ = 1 积分
+ */
+export async function calcPointsBalance(): Promise<{ totalEarned: number; totalSpent: number; balance: number }> {
+  const [checkins, redemptions, exercises] = await Promise.all([
+    prisma.checkIn.findMany({
+      include: { task: { select: { points: true } } },
+    }),
+    prisma.redemption.aggregate({ _sum: { points: true } }),
+    prisma.exercise.findMany({ select: { quality: true } }),
+  ]);
+
+  let totalEarned = 0;
+  for (const c of checkins) {
+    const base = c.task.points || 0;
+    const q = c.quality || 0;
+    if (q > 0) totalEarned += Math.round(base * (q / 3));
+  }
+  // 运动积分：每个太阳=1积分
+  for (const e of exercises) {
+    totalEarned += e.quality || 0;
+  }
+
+  const totalSpent = redemptions._sum.points || 0;
+  return { totalEarned, totalSpent, balance: totalEarned - totalSpent };
+}
