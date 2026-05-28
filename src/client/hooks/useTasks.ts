@@ -23,6 +23,7 @@ export async function createTask(data: {
   repeatType?: string;
   startDate?: string;
   repeatDays?: number[];
+  points?: number;
 }): Promise<Task> {
   const res = await fetch(API, {
     method: 'POST',
@@ -60,4 +61,10 @@ export async function updateTask(
 export async function deleteTask(id: number): Promise<void> {
   const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('删除任务失败');
+}
+
+export async function fetchTasksByDate(date: string): Promise<Task[]> {
+  const res = await fetch(`${API}/date/${date}`);
+  if (!res.ok) throw new Error('获取任务失败');
+  return res.json();
 }

@@ -3,6 +3,9 @@ import { Link, useLocation } from 'react-router-dom';
 const navItems = [
   { path: '/', icon: '🏠', label: '首页' },
   { path: '/tasks', icon: '📋', label: '任务' },
+  { path: '/exercise', icon: '🏃', label: '运动' },
+  { path: '/weekly', icon: '📅', label: '周报' },
+  { path: '/redeem', icon: '🎁', label: '兑换' },
   { path: '/stats', icon: '📊', label: '统计' },
   { path: '/settings', icon: '⚙️', label: '设置' },
 ];

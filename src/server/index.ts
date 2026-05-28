@@ -1,5 +1,6 @@
 import app from './app';
 import { startAutoBackup } from './backup';
+import { initPresetExercises } from './db';
 
 const PORT = Number(process.env.PORT) || 3000;
 

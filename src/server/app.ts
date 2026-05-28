@@ -6,6 +6,10 @@ import { statsRouter } from './routes/stats';
 import { uploadRouter } from './routes/upload';
 import { settingsRouter } from './routes/settings';
 import { backupRouter } from './routes/backup';
+import { redemptionsRouter } from './routes/redemptions';
+import { exerciseTypeRouter } from './routes/exercise-types';
+import { exerciseRouter } from './routes/exercises';
+import { exerciseStatsRouter } from './routes/exercise-stats';
 
 const app = express();
 
@@ -27,6 +31,10 @@ app.use('/api/stats', statsRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/backup', backupRouter);
+app.use('/api/redemptions', redemptionsRouter);
+app.use('/api/exercise-types', exerciseTypeRouter);
+app.use('/api/exercises', exerciseRouter);
+app.use('/api/exercise-stats', exerciseStatsRouter);
 
 // ── Production: serve built frontend ──────────────────
 if (process.env.NODE_ENV === 'production') {

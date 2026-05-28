@@ -35,17 +35,21 @@ taskRouter.get('/today', async (_req, res) => {
 
     // 获取所有打卡记录（用于判断一次性任务是否已完成过）
     const allCheckins = await prisma.checkIn.findMany({
-      select: { taskId: true },
+      select: { taskId: true, date: true },
     });
-    const completedTaskIds = new Set(allCheckins.map(c => c.taskId));
+    // 今天之前已完成打卡的一次性任务（不含今天）
+    const completedBeforeToday = new Set(
+      allCheckins.filter(c => c.date < todayStr).map(c => c.taskId)
+    );
 
     const result = tasks
       .filter(task => {
         if (task.repeatType === 'daily') return true;
         if (task.repeatType === 'once') {
-          // 一次性任务：startDate <= 今天 且 从未完成过打卡（未完成则顺延）
+          // 一次性任务：startDate <= 今天 且 今天之前未完成过打卡
+          // → 今天已完成的也显示（展示✅状态），昨天及以前完成的不再显示
           const taskDate = task.startDate || task.createdAt.slice(0, 10);
-          return taskDate <= todayStr && !completedTaskIds.has(task.id);
+          return taskDate <= todayStr && !completedBeforeToday.has(task.id);
         }
         if (task.repeatType === 'weekly') {
           const days: number[] = JSON.parse(task.repeatDays);
@@ -65,6 +69,8 @@ taskRouter.get('/today', async (_req, res) => {
           isCheckedIn: checkinMap.has(task.id),
           checkInId: checkinMap.get(task.id)?.id ?? null,
           quality: checkinMap.get(task.id)?.quality ?? null,
+          photoUrl: checkinMap.get(task.id)?.photoUrl ?? null,
+          isMakeup: checkinMap.get(task.id)?.isMakeup ?? 0,
           overdueDays,
         };
       });
@@ -72,6 +78,62 @@ taskRouter.get('/today', async (_req, res) => {
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: '获取今日任务失败' });
+  }
+});
+
+// 获取指定日期任务（含打卡状态）- 用于补打卡
+taskRouter.get('/date/:date', async (req, res) => {
+  try {
+    const { date } = req.params; // YYYY-MM-DD
+    const targetDate = new Date(date);
+    const dayOfWeek = targetDate.getDay();
+
+    const tasks = await prisma.task.findMany({
+      where: { isActive: 1 },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    const dayCheckins = await prisma.checkIn.findMany({
+      where: { date },
+    });
+    const checkinMap = new Set(dayCheckins.map(c => c.taskId));
+
+    const allCheckins = await prisma.checkIn.findMany({
+      where: { date: { lt: date } },
+      select: { taskId: true },
+    });
+    const completedBefore = new Set(allCheckins.map(c => c.taskId));
+
+    const result = tasks
+      .filter(task => {
+        if (task.repeatType === 'daily') return true;
+        if (task.repeatType === 'once') {
+          const taskDate = task.startDate || task.createdAt.slice(0, 10);
+          return taskDate <= date && !completedBefore.has(task.id);
+        }
+        if (task.repeatType === 'weekly') {
+          const days: number[] = JSON.parse(task.repeatDays);
+          return days.includes(dayOfWeek);
+        }
+        return false;
+      })
+      .map(task => {
+        const taskDate = task.repeatType === 'once'
+          ? (task.startDate || task.createdAt.slice(0, 10))
+          : null;
+        const overdueDays = taskDate && taskDate < date
+          ? Math.floor((targetDate.getTime() - new Date(taskDate).getTime()) / 86400000)
+          : 0;
+        return {
+          ...task,
+          isCheckedIn: checkinMap.has(task.id),
+          overdueDays,
+        };
+      });
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: '获取任务失败' });
   }
 });
 
@@ -89,7 +151,7 @@ taskRouter.get('/:id', async (req, res) => {
 // 创建任务
 taskRouter.post('/', async (req, res) => {
   try {
-    const { name, subject, emoji, estimatedMin, deadlineTime, repeatType, repeatDays, startDate } = req.body;
+    const { name, subject, emoji, estimatedMin, deadlineTime, repeatType, repeatDays, startDate, points } = req.body;
     if (!name || !subject) return res.status(400).json({ error: '任务名和科目必填' });
 
     const now = new Date().toISOString();
@@ -103,6 +165,7 @@ taskRouter.post('/', async (req, res) => {
         repeatType: repeatType || 'once',
         repeatDays: JSON.stringify(repeatDays || []),
         startDate: startDate || null,
+        points: points ?? 5,
         createdAt: now,
         updatedAt: now,
       },

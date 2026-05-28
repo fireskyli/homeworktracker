@@ -5,12 +5,14 @@ const API = '/api/checkins';
 export async function checkIn(
   taskId: number,
   quality?: number,
-  photoUrl?: string
-): Promise<CheckIn> {
+  photoUrl?: string,
+  date?: string,
+  isMakeup?: boolean
+): Promise<CheckIn & { earnedPoints: number }> {
   const res = await fetch(API, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ taskId, quality, photoUrl }),
+    body: JSON.stringify({ taskId, quality, photoUrl, date, isMakeup }),
   });
   if (!res.ok) {
     const err = await res.json();

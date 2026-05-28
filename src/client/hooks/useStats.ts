@@ -1,4 +1,4 @@
-import { StatsOverview, StreakData, CalendarData } from '../types';
+import { StatsOverview, StreakData, CalendarData, WeeklyReport } from '../types';
 
 export async function fetchStatsOverview(): Promise<StatsOverview> {
   const res = await fetch('/api/stats/overview');
@@ -41,5 +41,19 @@ export async function fetchCalendar(
 ): Promise<CalendarData> {
   const res = await fetch(`/api/stats/calendar?year=${year}&month=${month}`);
   if (!res.ok) throw new Error('获取日历数据失败');
+  return res.json();
+}
+
+export async function fetchWeeklyReport(date?: string): Promise<WeeklyReport> {
+  const params = new URLSearchParams();
+  if (date) params.set('date', date);
+  const res = await fetch(`/api/stats/weekly?${params}`);
+  if (!res.ok) throw new Error('获取周报失败');
+  return res.json();
+}
+
+export async function fetchPointsBalance(): Promise<{ balance: number }> {
+  const res = await fetch('/api/stats/points-balance');
+  if (!res.ok) throw new Error('获取积分余额失败');
   return res.json();
 }

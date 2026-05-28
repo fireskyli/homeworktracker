@@ -6,7 +6,7 @@ export const checkinRouter = Router();
 // 打卡
 checkinRouter.post('/', async (req, res) => {
   try {
-    const { taskId, date, quality, photoUrl, note } = req.body;
+    const { taskId, date, quality, photoUrl, note, isMakeup } = req.body;
     if (!taskId) return res.status(400).json({ error: 'taskId 必填' });
 
     const task = await prisma.task.findUnique({ where: { id: Number(taskId) } });
@@ -18,7 +18,7 @@ checkinRouter.post('/', async (req, res) => {
     const existing = await prisma.checkIn.findUnique({
       where: { taskId_date: { taskId: Number(taskId), date: today } },
     });
-    if (existing) return res.status(409).json({ error: '今日已打卡' });
+    if (existing) return res.status(409).json({ error: '该日期已打卡' });
 
     const checkin = await prisma.checkIn.create({
       data: {
@@ -28,9 +28,15 @@ checkinRouter.post('/', async (req, res) => {
         quality: quality || null,
         photoUrl: photoUrl || null,
         note: note || null,
+        isMakeup: isMakeup ? 1 : 0,
       },
     });
-    res.status(201).json(checkin);
+
+    // 计算本次获得积分：1星=1分, 2星=2分, 3星=3分，上限为任务基础积分
+    const q = quality || 0;
+    const earnedPoints = q > 0 ? Math.min(q, task.points || 0) : 0;
+
+    res.status(201).json({ ...checkin, earnedPoints });
   } catch (err) {
     res.status(500).json({ error: '打卡失败' });
   }

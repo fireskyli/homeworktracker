@@ -26,7 +26,10 @@
       "Bash(git push *)",
       "Bash(git commit *)",
       "Bash(tasklist *)",
-      "Bash(netstat -ano)"
+      "Bash(netstat -ano)",
+      "Bash(xargs grep -l \"interface.*Task\\\\|type.*Task\")",
+      "Read(//etc/**)",
+      "Bash(systeminfo)"
     ]
   }
 }

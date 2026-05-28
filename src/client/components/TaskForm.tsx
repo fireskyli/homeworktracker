@@ -18,6 +18,7 @@ export default function TaskForm({ editingTask, onClose, onSaved }: Props) {
   const [emoji, setEmoji] = useState(editingTask?.emoji || '📚');
   const [estimatedMin, setEstimatedMin] = useState(editingTask?.estimatedMin || 10);
   const [deadlineTime, setDeadlineTime] = useState(editingTask?.deadlineTime || '');
+  const [points, setPoints] = useState(editingTask?.points ?? 5);
   const [repeatType, setRepeatType] = useState<'once' | 'daily' | 'weekly'>(
     (editingTask?.repeatType as 'once' | 'daily' | 'weekly') || 'daily'
   );
