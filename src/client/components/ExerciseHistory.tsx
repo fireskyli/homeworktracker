@@ -82,6 +82,9 @@ export default function ExerciseHistory() {
                             {ex.sets.map((s, i) => `${s.count}组×${s.reps}${ex.exerciseType?.unit || '次'}`).join(' / ')}
                           </span>
                         )}
+                        {ex.isMakeup === 1 && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 ml-1">🔙 补卡</span>
+                        )}
                         {ex.note && <span className="text-xs text-gray-400 ml-1">· {ex.note}</span>}
                       </div>
                     </div>

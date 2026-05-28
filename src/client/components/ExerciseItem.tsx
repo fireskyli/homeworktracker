@@ -33,6 +33,11 @@ export default function ExerciseItem({ exercise, onDelete }: Props) {
                   {formatSets(type?.unit || '次')}
                 </span>
               )}
+              {exercise.isMakeup === 1 && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
+                  🔙 补卡
+                </span>
+              )}
               {exercise.note && (
                 <span className="text-xs text-gray-400">📝 {exercise.note}</span>
               )}

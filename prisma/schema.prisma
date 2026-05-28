@@ -69,6 +69,7 @@ model Exercise {
   quality         Int?
   sets            String?
   note            String?
+  isMakeup        Int          @default(0)
   createdAt       String
 }
 

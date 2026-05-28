@@ -29,10 +29,14 @@ export default function ExercisePage() {
   const [showForm, setShowForm] = useState(false);
   const [selectedType, setSelectedType] = useState<ExerciseType | null>(null);
   const [showTypePicker, setShowTypePicker] = useState(false);
+  const [showMakeupPicker, setShowMakeupPicker] = useState(false);
+  const [makeupDate, setMakeupDate] = useState('');
+  const [makeupExercises, setMakeupExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
 
   const now = new Date();
   const dateStr = `${now.getMonth() + 1}月${now.getDate()}日 ${WEEKDAYS[now.getDay()]}`;
+  const todayStr = now.toISOString().split('T')[0];
 
   const loadData = useCallback(async () => {
     try {
@@ -56,29 +60,35 @@ export default function ExercisePage() {
     loadData();
   }, [loadData]);
 
+  // 默认补卡日期为昨天
+  useEffect(() => {
+    if (showMakeupPicker && !makeupDate) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      setMakeupDate(yesterday.toISOString().split('T')[0]);
+    }
+  }, [showMakeupPicker, makeupDate]);
+
   function handleSelectType(type: ExerciseType) {
     setSelectedType(type);
     setShowTypePicker(false);
     setShowForm(true);
   }
 
-  async function handleDelete(id: number) {
+  function handleDelete(id: number) {
     if (!confirm('确定删除此运动记录？')) return;
-    try {
-      await deleteExercise(id);
-      await loadData();
-      await refreshData();
-    } catch (err) {
-      alert((err as Error).message);
-    }
+    deleteExercise(id).then(() => {
+      loadData();
+      refreshData();
+    }).catch(err => alert((err as Error).message));
   }
 
   async function handleSaveExercise(data: { exerciseTypeId: number; quality: number; sets: ExerciseSet[]; note: string }) {
-    try {
-      await createExercise(data);
-    } catch (err) {
-      throw err;
-    }
+    await createExercise(data);
+  }
+
+  async function handleSaveMakeup(data: { exerciseTypeId: number; quality: number; sets: ExerciseSet[]; note: string }) {
+    await createExercise({ ...data, date: makeupDate });
   }
 
   async function handleAddCustomType(data: { name: string; emoji: string; unit: string }) {
@@ -89,6 +99,32 @@ export default function ExercisePage() {
     } catch (err) {
       alert((err as Error).message);
     }
+  }
+
+  // 获取指定日期的运动记录（用于补卡页面显示已打卡的）
+  async function loadMakeupDateExercises(date: string) {
+    try {
+      const { fetchExercises } = await import('../hooks/useExercises');
+      const exercises = await fetchExercises({ startDate: date, endDate: date });
+      setMakeupExercises(exercises);
+    } catch (err) {
+      console.error('加载运动记录失败:', err);
+      setMakeupExercises([]);
+    }
+  }
+
+  function handleMakeupDateChange(date: string) {
+    setMakeupDate(date);
+    loadMakeupDateExercises(date);
+  }
+
+  function handleOpenMakeupPicker() {
+    setShowMakeupPicker(true);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yStr = yesterday.toISOString().split('T')[0];
+    setMakeupDate(yStr);
+    loadMakeupDateExercises(yStr);
   }
 
   return (
@@ -167,6 +203,15 @@ export default function ExercisePage() {
             🏃 开始运动
           </button>
 
+          {/* 补卡入口 */}
+          <button
+            onClick={handleOpenMakeupPicker}
+            className="flex items-center justify-center gap-2 mt-3 py-3 bg-orange-50 border border-orange-200 rounded-xl text-orange-600 font-medium text-sm hover:bg-orange-100 transition-colors w-full"
+          >
+            <span>🔙</span>
+            <span>补运动打卡 — 补上之前漏掉的运动</span>
+          </button>
+
           {todayExercises.length === 0 && (
             <div className="text-center py-8 text-gray-400">
               <span className="text-4xl block mb-2">🏃‍♂️</span>
@@ -201,7 +246,7 @@ export default function ExercisePage() {
         </>
       )}
 
-      {/* 运动类型选择弹窗 */}
+      {/* 运动类型选择弹窗（正常打卡） */}
       {showTypePicker && (
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
           <div className="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-6 max-h-[80vh] overflow-y-auto">
@@ -222,8 +267,6 @@ export default function ExercisePage() {
                 </button>
               ))}
             </div>
-
-            {/* 家长模式：新增自定义运动 */}
             {isParentMode && (
               <div className="mt-4 pt-4 border-t border-gray-100">
                 <CustomTypeForm onAdd={handleAddCustomType} />
@@ -233,8 +276,73 @@ export default function ExercisePage() {
         </div>
       )}
 
-      {/* 运动打卡表单 */}
-      {showForm && selectedType && (
+      {/* 补卡：日期选择 + 运动类型选择弹窗 */}
+      {showMakeupPicker && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+          <div className="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-6 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold">🔙 补运动打卡</h2>
+              <button onClick={() => { setShowMakeupPicker(false); setSelectedType(null); }} className="text-gray-400 text-2xl leading-none">&times;</button>
+            </div>
+
+            {/* 日期选择 */}
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-4">
+              <label className="text-sm text-gray-500 mb-2 block">选择日期</label>
+              <input
+                type="date"
+                value={makeupDate}
+                max={todayStr}
+                onChange={e => handleMakeupDateChange(e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+
+            {/* 该日期已完成的运动 */}
+            {makeupExercises.length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-500 mb-2">该日已打卡</h3>
+                <div className="flex flex-col gap-2">
+                  {makeupExercises.map(ex => (
+                    <ExerciseItem key={ex.id} exercise={ex} onDelete={handleDelete} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 选择运动类型进行补卡 */}
+            {!selectedType ? (
+              <>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">选择要补卡的运动类型</h3>
+                <div className="grid grid-cols-3 gap-3">
+                  {exerciseTypes.map(type => (
+                    <button
+                      key={type.id}
+                      onClick={() => setSelectedType(type)}
+                      className="flex flex-col items-center gap-1.5 p-4 bg-gray-50 rounded-xl hover:bg-orange-50 hover:border-orange-200 border border-transparent transition-colors"
+                    >
+                      <span className="text-3xl">{type.emoji}</span>
+                      <span className="text-sm font-medium text-gray-700">{type.name}</span>
+                      <span className="text-xs text-gray-400">单位: {type.unit}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="mt-2">
+                <button
+                  onClick={() => setSelectedType(null)}
+                  className="text-sm text-gray-400 mb-2"
+                >
+                  ← 重新选择运动类型
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 运动打卡表单（正常打卡） */}
+      {showForm && selectedType && !showMakeupPicker && (
         <ExerciseForm
           exerciseType={selectedType}
           onClose={() => {
@@ -248,6 +356,25 @@ export default function ExercisePage() {
             await loadData();
             await refreshData();
           }}
+        />
+      )}
+
+      {/* 运动打卡表单（补卡） */}
+      {showMakeupPicker && selectedType && (
+        <ExerciseForm
+          exerciseType={selectedType}
+          onClose={() => {
+            setSelectedType(null);
+          }}
+          onSaved={async (data) => {
+            await handleSaveMakeup(data);
+            setSelectedType(null);
+            await loadMakeupDateExercises(makeupDate);
+            await loadData();
+            await refreshData();
+          }}
+          isMakeup
+          makeupDate={makeupDate}
         />
       )}
     </div>

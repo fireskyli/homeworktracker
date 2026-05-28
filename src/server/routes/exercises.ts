@@ -77,6 +77,7 @@ exerciseRouter.post('/', async (req, res) => {
     if (!type || !type.isActive) return res.status(404).json({ error: '运动类型不存在' });
 
     const today = date || new Date().toISOString().split('T')[0];
+    const isMakeup = today !== new Date().toISOString().split('T')[0];
     const exercise = await prisma.exercise.create({
       data: {
         exerciseTypeId: Number(exerciseTypeId),
@@ -85,6 +86,7 @@ exerciseRouter.post('/', async (req, res) => {
         quality: quality || null,
         sets: sets ? JSON.stringify(sets) : null,
         note: note || null,
+        isMakeup: isMakeup ? 1 : 0,
         createdAt: new Date().toISOString(),
       },
       include: { exerciseType: true },

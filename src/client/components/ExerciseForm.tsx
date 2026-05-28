@@ -6,6 +6,8 @@ interface Props {
   exerciseType: ExerciseType;
   onSaved: (data: { exerciseTypeId: number; quality: number; sets: ExerciseSet[]; note: string }) => Promise<void>;
   onClose: () => void;
+  isMakeup?: boolean;
+  makeupDate?: string;
 }
 
 export default function ExerciseForm({ exerciseType, onSaved, onClose }: Props) {

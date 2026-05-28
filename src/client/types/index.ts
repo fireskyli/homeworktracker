@@ -114,6 +114,7 @@ export interface Exercise {
   quality: number | null;
   sets: ExerciseSet[] | null;
   note: string | null;
+  isMakeup: number;
   createdAt: string;
 }
 
