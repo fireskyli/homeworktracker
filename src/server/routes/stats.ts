@@ -221,9 +221,9 @@ statsRouter.get('/weekly', async (req, res) => {
         include: { task: { select: { points: true } } },
       }),
       prisma.redemption.findMany({
-        where: { date: { gte: mondayStr, lte: sundayStr } },
+        where: { date: { gte: mondayStr, lte: sundayStr }, status: 'approved' },
       }),
-      prisma.redemption.findMany(),
+      prisma.redemption.findMany({ where: { status: 'approved' } }),
     ]);
 
     const totalTasks = tasks.length;

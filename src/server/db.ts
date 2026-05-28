@@ -43,7 +43,7 @@ export async function calcPointsBalance(): Promise<{ totalEarned: number; totalS
     prisma.checkIn.findMany({
       include: { task: { select: { points: true } } },
     }),
-    prisma.redemption.aggregate({ _sum: { points: true } }),
+    prisma.redemption.aggregate({ where: { status: 'approved' }, _sum: { points: true } }),
     prisma.exercise.findMany({ select: { quality: true } }),
   ]);
 
