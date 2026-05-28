@@ -180,7 +180,7 @@ taskRouter.post('/', async (req, res) => {
 taskRouter.put('/:id', async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { name, subject, emoji, estimatedMin, deadlineTime, repeatType, repeatDays, sortOrder, isActive, startDate } = req.body;
+    const { name, subject, emoji, estimatedMin, deadlineTime, repeatType, repeatDays, sortOrder, isActive, startDate, points } = req.body;
 
     const data: Record<string, unknown> = { updatedAt: new Date().toISOString() };
     if (name !== undefined) data.name = name;
@@ -193,6 +193,7 @@ taskRouter.put('/:id', async (req, res) => {
     if (sortOrder !== undefined) data.sortOrder = sortOrder;
     if (isActive !== undefined) data.isActive = isActive ? 1 : 0;
     if (startDate !== undefined) data.startDate = startDate;
+    if (points !== undefined) data.points = points;
 
     const task = await prisma.task.update({ where: { id }, data });
     res.json(task);

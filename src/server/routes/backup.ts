@@ -73,7 +73,7 @@ backupRouter.post('/import', upload.single('backup'), (req, res) => {
     const targetPath = path.join(backupsDir, targetName);
 
     // 先备份当前数据库
-    const DB_PATH = path.resolve(__dirname, '../../prisma/homework.db');
+    const DB_PATH = path.resolve(process.cwd(), 'prisma', 'prisma', 'homework.db');
     const safetyName = `homework_before_import_${ts}.db`;
     if (fs.existsSync(DB_PATH)) {
       fs.copyFileSync(DB_PATH, path.join(backupsDir, safetyName));

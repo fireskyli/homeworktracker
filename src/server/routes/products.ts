@@ -7,9 +7,11 @@ import { v4 as uuidv4 } from 'uuid';
 export const productsRouter = Router();
 
 // 图片上传配置（复用 upload.ts 的配置）
+const uploadsDir = path.resolve(process.cwd(), 'uploads');
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    cb(null, 'uploads/');
+    cb(null, uploadsDir);
   },
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname);

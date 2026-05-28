@@ -47,6 +47,7 @@ export async function updateTask(
     repeatDays: number[];
     sortOrder: number;
     isActive: number;
+    points: number;
   }>
 ): Promise<Task> {
   const res = await fetch(`${API}/${id}`, {

@@ -46,6 +46,7 @@ export default function TaskForm({ editingTask, onClose, onSaved }: Props) {
           repeatType,
           startDate: repeatType === 'once' ? startDate : undefined,
           repeatDays: repeatType === 'weekly' ? repeatDays : [],
+          points,
         });
       } else {
         await createTask({
@@ -57,6 +58,7 @@ export default function TaskForm({ editingTask, onClose, onSaved }: Props) {
           repeatType,
           startDate: repeatType === 'once' ? startDate : undefined,
           repeatDays: repeatType === 'weekly' ? repeatDays : [],
+          points,
         });
       }
       onSaved();
@@ -145,6 +147,19 @@ export default function TaskForm({ editingTask, onClose, onSaved }: Props) {
             onChange={e => setEstimatedMin(Number(e.target.value))}
             min={1}
             max={120}
+            className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </label>
+
+        {/* 积分上限 */}
+        <label className="block mb-3">
+          <span className="text-sm text-gray-600">积分上限（1-10分，每星=1分）</span>
+          <input
+            type="number"
+            value={points}
+            onChange={e => setPoints(Number(e.target.value))}
+            min={1}
+            max={10}
             className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </label>

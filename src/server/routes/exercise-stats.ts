@@ -61,6 +61,7 @@ exerciseStatsRouter.get('/overview', async (_req, res) => {
 
     const todayCount = todayExercises.length;
     const weekCount = weekExercises.length;
+    const todaySuns = todayExercises.reduce((sum, e) => sum + (e.quality || 0), 0);
     const totalSuns = allExercises.reduce((sum, e) => sum + (e.quality || 0), 0);
 
     const dates = allExercises.map(e => e.date);
@@ -69,6 +70,7 @@ exerciseStatsRouter.get('/overview', async (_req, res) => {
     res.json({
       todayCount,
       weekCount,
+      todaySuns,
       totalSuns,
       currentStreak: streak.current,
       longestStreak: streak.longest,

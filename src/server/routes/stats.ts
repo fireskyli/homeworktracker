@@ -290,7 +290,7 @@ statsRouter.get('/weekly', async (req, res) => {
     for (const c of checkins) {
       const base = taskPointsMap.get(c.taskId) || 0;
       const q = c.quality || 0;
-      totalPointsEarned += q > 0 ? Math.round(base * (q / 3)) : 0;
+      totalPointsEarned += q > 0 ? Math.min(q, base) : 0;
     }
 
     const totalPointsSpent = weekRedemptions.reduce((s, r) => s + r.points, 0);
@@ -302,7 +302,7 @@ statsRouter.get('/weekly', async (req, res) => {
     for (const c of allCheckins) {
       const base = c.task?.points || 0;
       const q = c.quality || 0;
-      lifetimeEarned += q > 0 ? Math.round(base * (q / 3)) : 0;
+      lifetimeEarned += q > 0 ? Math.min(q, base) : 0;
     }
     const lifetimeSpent = allRedemptions.reduce((s, r) => s + r.points, 0);
 

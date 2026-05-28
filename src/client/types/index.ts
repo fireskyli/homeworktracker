@@ -136,6 +136,7 @@ export interface Exercise {
 export interface ExerciseStatsOverview {
   todayCount: number;
   weekCount: number;
+  todaySuns: number;
   totalSuns: number;
   currentStreak: number;
   totalPoints: number;

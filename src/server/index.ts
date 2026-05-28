@@ -4,8 +4,8 @@ import { initPresetExercises } from './db';
 
 const PORT = Number(process.env.PORT) || 3000;
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`Server running at http://localhost:${PORT}`);
-  console.log(`LAN access: http://192.168.10.19:${PORT}`);
+  await initPresetExercises();
   startAutoBackup();
 });

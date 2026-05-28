@@ -8,7 +8,6 @@ interface Props {
   isCheckedIn: boolean;
   quality: number | null;
   photoUrl?: string | null;
-  checkInDate?: string;
 }
 
 export default function CheckInButton({ taskId, isCheckedIn, quality, photoUrl }: Props) {

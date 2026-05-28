@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../App';
-import { ExerciseType, Exercise, ExerciseSet } from '../types';
+import { ExerciseType, Exercise, ExerciseSet, ExerciseStatsOverview } from '../types';
 import { fetchExerciseTypes, createExerciseType } from '../hooks/useExerciseTypes';
 import { fetchTodayExercises, createExercise, deleteExercise } from '../hooks/useExercises';
 import { fetchExerciseOverview } from '../hooks/useExerciseStats';
@@ -19,9 +19,10 @@ export default function ExercisePage() {
   const [tab, setTab] = useState<Tab>('checkin');
   const [exerciseTypes, setExerciseTypes] = useState<ExerciseType[]>([]);
   const [todayExercises, setTodayExercises] = useState<Exercise[]>([]);
-  const [overview, setOverview] = useState({
+  const [overview, setOverview] = useState<ExerciseStatsOverview>({
     todayCount: 0,
     weekCount: 0,
+    todaySuns: 0,
     totalSuns: 0,
     currentStreak: 0,
     totalPoints: 0,
@@ -173,7 +174,7 @@ export default function ExercisePage() {
             </div>
             <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 text-center">
               <div className="text-xs text-gray-500">今日太阳</div>
-              <div className="text-xl font-bold text-yellow-500 mt-1">☀️ {overview.totalSuns}</div>
+              <div className="text-xl font-bold text-yellow-500 mt-1">☀️ {overview.todaySuns}</div>
               <div className="text-xs text-gray-400">个</div>
             </div>
             <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 text-center">
@@ -373,8 +374,6 @@ export default function ExercisePage() {
             await loadData();
             await refreshData();
           }}
-          isMakeup
-          makeupDate={makeupDate}
         />
       )}
     </div>

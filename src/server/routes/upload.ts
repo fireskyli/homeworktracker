@@ -5,9 +5,11 @@ import { v4 as uuidv4 } from 'uuid';
 
 export const uploadRouter = Router();
 
+const uploadsDir = path.resolve(process.cwd(), 'uploads');
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    cb(null, 'uploads/');
+    cb(null, uploadsDir);
   },
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname);
