@@ -33,6 +33,9 @@ export default function RedemptionPage() {
   // 申请确认
   const [applyingProduct, setApplyingProduct] = useState<Product | null>(null);
 
+  // 家长模式入口（弹窗方式）
+  const [showParentGate, setShowParentGate] = useState(false);
+
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -83,7 +86,9 @@ export default function RedemptionPage() {
       if (res.ok) {
         setParentMode(true);
         localStorage.setItem('parentMode', 'true');
+        setPassword('');
         setPasswordError('');
+        setShowParentGate(false);
       } else {
         setPasswordError('密码错误');
       }
@@ -233,42 +238,6 @@ export default function RedemptionPage() {
     }
   }
 
-  // ── 未验证密码 ──────────────────────────────────
-
-  if (!isParentMode && !localStorage.getItem('parentMode')) {
-    return (
-      <div className="p-4 flex flex-col items-center justify-center min-h-[60vh]">
-        <span className="text-5xl mb-4">🔒</span>
-        <h2 className="text-lg font-bold mb-4">家长验证</h2>
-        <input
-          type="password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleVerifyPassword()}
-          placeholder="请输入家长密码"
-          className="w-full max-w-xs px-4 py-2.5 border border-gray-200 rounded-lg text-base text-center focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
-        />
-        {passwordError && <p className="text-red-500 text-sm mb-3">{passwordError}</p>}
-        <button
-          onClick={handleVerifyPassword}
-          className="px-6 py-2.5 bg-blue-500 text-white rounded-xl text-base font-medium"
-        >
-          确认
-        </button>
-        <button
-          onClick={() => {
-            setParentMode(false);
-            setPassword('');
-            setPasswordError('');
-          }}
-          className="mt-4 text-sm text-gray-400"
-        >
-          返回学生模式
-        </button>
-      </div>
-    );
-  }
-
   // ── 主视图 ──────────────────────────────────────
 
   const statusLabel: Record<string, { text: string; color: string }> = {
@@ -281,14 +250,34 @@ export default function RedemptionPage() {
     <div className="p-4 pb-24">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold">积分商城</h1>
-        {isParentMode && (
-          <button
-            onClick={openAddProduct}
-            className="px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-medium"
-          >
-            + 添加商品
-          </button>
-        )}
+        <div className="flex gap-2">
+          {isParentMode ? (
+            <>
+              <button
+                onClick={openAddProduct}
+                className="px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-medium"
+              >
+                + 添加商品
+              </button>
+              <button
+                onClick={() => {
+                  setParentMode(false);
+                  localStorage.removeItem('parentMode');
+                }}
+                className="px-3 py-2 bg-gray-200 text-gray-600 rounded-xl text-sm font-medium"
+              >
+                退出管理
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setShowParentGate(true)}
+              className="px-3 py-2 bg-gray-100 text-gray-500 rounded-xl text-sm font-medium"
+            >
+              家长管理
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 积分余额 */}
@@ -505,6 +494,43 @@ export default function RedemptionPage() {
                 className="flex-1 py-2.5 rounded-xl bg-blue-500 text-white text-base font-medium"
               >
                 确认申请
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 家长密码弹窗 */}
+      {showParentGate && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+          <div className="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-6">
+            <h2 className="text-lg font-bold mb-4">家长验证</h2>
+            <p className="text-sm text-gray-500 mb-4">输入密码后可以管理商品、审批兑换申请</p>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleVerifyPassword()}
+              placeholder="请输入家长密码"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-base text-center focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+            />
+            {passwordError && <p className="text-red-500 text-sm mb-3">{passwordError}</p>}
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowParentGate(false);
+                  setPassword('');
+                  setPasswordError('');
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-600 text-base font-medium"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleVerifyPassword}
+                className="flex-1 py-2.5 rounded-xl bg-blue-500 text-white text-base font-medium"
+              >
+                确认
               </button>
             </div>
           </div>

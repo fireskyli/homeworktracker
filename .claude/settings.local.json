@@ -29,7 +29,11 @@
       "Bash(netstat -ano)",
       "Bash(xargs grep -l \"interface.*Task\\\\|type.*Task\")",
       "Read(//etc/**)",
-      "Bash(systeminfo)"
+      "Bash(systeminfo)",
+      "Bash(PORT=3000 node *)",
+      "Bash(npm run *)",
+      "Bash(powershell *)",
+      "Bash(findstr :3000)"
     ]
   }
 }
