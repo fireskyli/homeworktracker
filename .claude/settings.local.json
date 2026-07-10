@@ -33,7 +33,12 @@
       "Bash(PORT=3000 node *)",
       "Bash(npm run *)",
       "Bash(powershell *)",
-      "Bash(findstr :3000)"
+      "Bash(findstr :3000)",
+      "Bash(npm install *)",
+      "Bash(npm test *)",
+      "Bash(git status *)",
+      "Bash(git -C *)",
+      "Bash(docker *)"
     ]
   }
 }

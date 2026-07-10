@@ -21,3 +21,6 @@ backups/
 # Logs
 *.log
 npm-debug.log*
+
+# Agent
+.reasonix/
