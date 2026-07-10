@@ -1,0 +1,8 @@
+node_modules/
+dist/
+backups/
+.git/
+.reasonix/
+.claude/
+.env
+*.log

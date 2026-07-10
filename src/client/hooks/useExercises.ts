@@ -1,4 +1,5 @@
 import { Exercise, ExerciseSet } from '../types';
+import { apiFetch } from '../utils/api';
 
 const API = '/api/exercises';
 
@@ -12,13 +13,13 @@ export async function fetchExercises(params?: {
   if (params?.endDate) search.set('endDate', params.endDate);
   if (params?.typeId) search.set('typeId', String(params.typeId));
   const query = search.toString() ? `?${search.toString()}` : '';
-  const res = await fetch(`${API}${query}`);
+  const res = await apiFetch(`${API}${query}`);
   if (!res.ok) throw new Error('获取运动记录失败');
   return res.json();
 }
 
 export async function fetchTodayExercises(): Promise<Exercise[]> {
-  const res = await fetch(`${API}/today`);
+  const res = await apiFetch(`${API}/today`);
   if (!res.ok) throw new Error('获取今日运动记录失败');
   return res.json();
 }
@@ -30,9 +31,8 @@ export async function createExercise(data: {
   sets?: ExerciseSet[];
   note?: string;
 }): Promise<Exercise> {
-  const res = await fetch(API, {
+  const res = await apiFetch(API, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -43,6 +43,6 @@ export async function createExercise(data: {
 }
 
 export async function deleteExercise(id: number): Promise<void> {
-  const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
+  const res = await apiFetch(`${API}/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('删除失败');
 }

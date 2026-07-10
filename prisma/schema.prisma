@@ -7,6 +7,25 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ── 用户（网络模式专用，单机模式有哨兵行 id=0）──────
+model User {
+  id           Int          @id @default(autoincrement())
+  email        String       @unique
+  passwordHash String
+  displayName  String
+  role         String       @default("parent") // parent | child
+  createdAt    String
+  updatedAt    String
+  tasks        Task[]
+  checkins     CheckIn[]
+  redemptions  Redemption[]
+  products     Product[]
+  exerciseTypes ExerciseType[]
+  exercises    Exercise[]
+  settings     Setting[]
+}
+
+// ── 任务 ──────────────────────────────────────────
 model Task {
   id            Int        @id @default(autoincrement())
   name          String
@@ -18,13 +37,16 @@ model Task {
   repeatType    String     @default("once") // once | daily | weekly
   repeatDays    String     @default("[]")   // JSON array [1,3,5]
   sortOrder     Int        @default(0)
-  isActive       Int        @default(1)      // 1=active, 0=deleted
-  points        Int        @default(3)       // 积分上限（每星=1分，最高=quality分）
+  isActive      Int        @default(1)      // 1=active, 0=deleted
+  points        Int        @default(3)       // 积分上限
   createdAt     String
   updatedAt     String
+  userId        Int        @default(0)
+  user          User?      @relation(fields: [userId], references: [id])
   checkins      CheckIn[]
 }
 
+// ── 打卡记录 ──────────────────────────────────────
 model CheckIn {
   id           Int     @id @default(autoincrement())
   taskId       Int
@@ -35,10 +57,13 @@ model CheckIn {
   photoUrl     String?
   note         String?
   isMakeup     Int     @default(0)
+  userId       Int     @default(0)
+  user         User?   @relation(fields: [userId], references: [id])
 
   @@unique([taskId, date])
 }
 
+// ── 积分兑换 ──────────────────────────────────────
 model Redemption {
   id          Int      @id @default(autoincrement())
   name        String   // 兑换内容
@@ -50,8 +75,11 @@ model Redemption {
   status      String   @default("pending") // pending | approved | rejected
   appliedAt   String?  // 申请时间
   approvedAt  String?  // 审批时间
+  userId      Int      @default(0)
+  user        User?    @relation(fields: [userId], references: [id])
 }
 
+// ── 兑换商品 ──────────────────────────────────────
 model Product {
   id          Int     @id @default(autoincrement())
   name        String
@@ -61,8 +89,11 @@ model Product {
   isActive    Int     @default(1)
   sortOrder   Int     @default(0)
   createdAt   String
+  userId      Int     @default(0)
+  user        User?   @relation(fields: [userId], references: [id])
 }
 
+// ── 运动类型 ──────────────────────────────────────
 model ExerciseType {
   id          Int         @id @default(autoincrement())
   name        String
@@ -72,9 +103,12 @@ model ExerciseType {
   isActive    Int         @default(1)
   sortOrder   Int         @default(0)
   createdAt   String
+  userId      Int         @default(0)
+  user        User?       @relation(fields: [userId], references: [id])
   exercises   Exercise[]
 }
 
+// ── 运动记录 ──────────────────────────────────────
 model Exercise {
   id              Int          @id @default(autoincrement())
   exerciseTypeId  Int
@@ -86,9 +120,14 @@ model Exercise {
   note            String?
   isMakeup        Int          @default(0)
   createdAt       String
+  userId          Int          @default(0)
+  user            User?        @relation(fields: [userId], references: [id])
 }
 
+// ── 设置 ──────────────────────────────────────────
 model Setting {
-  key   String @id
-  value String
+  key    String @id
+  value  String
+  userId Int    @default(0)
+  user   User?  @relation(fields: [userId], references: [id])
 }

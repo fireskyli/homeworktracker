@@ -1,4 +1,5 @@
 import { Redemption } from '../types';
+import { apiFetch } from '../utils/api';
 
 const API = '/api/redemptions';
 
@@ -7,13 +8,13 @@ export async function fetchRedemptions(start?: string, end?: string): Promise<Re
   if (start) params.set('start', start);
   if (end) params.set('end', end);
   const query = params.toString() ? `?${params.toString()}` : '';
-  const res = await fetch(`${API}${query}`);
+  const res = await apiFetch(`${API}${query}`);
   if (!res.ok) throw new Error('获取兑换记录失败');
   return res.json();
 }
 
 export async function fetchBalance(): Promise<number> {
-  const res = await fetch(`${API}/balance`);
+  const res = await apiFetch(`${API}/balance`);
   if (!res.ok) throw new Error('获取积分余额失败');
   const data = await res.json();
   return data.balance;
@@ -25,9 +26,8 @@ export async function createRedemption(data: {
   password: string;
   photoUrl?: string;
 }): Promise<Redemption> {
-  const res = await fetch(API, {
+  const res = await apiFetch(API, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -38,9 +38,8 @@ export async function createRedemption(data: {
 }
 
 export async function deleteRedemption(id: number, password: string): Promise<void> {
-  const res = await fetch(`${API}/${id}`, {
+  const res = await apiFetch(`${API}/${id}`, {
     method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password }),
   });
   if (!res.ok) {

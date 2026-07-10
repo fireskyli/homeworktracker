@@ -1,15 +1,16 @@
 import { Task } from '../types';
+import { apiFetch } from '../utils/api';
 
 const API = '/api/tasks';
 
 export async function fetchTasks(): Promise<Task[]> {
-  const res = await fetch(API);
+  const res = await apiFetch(API);
   if (!res.ok) throw new Error('获取任务失败');
   return res.json();
 }
 
 export async function fetchTodayTasks(): Promise<Task[]> {
-  const res = await fetch(`${API}/today`);
+  const res = await apiFetch(`${API}/today`);
   if (!res.ok) throw new Error('获取今日任务失败');
   return res.json();
 }
@@ -25,9 +26,8 @@ export async function createTask(data: {
   repeatDays?: number[];
   points?: number;
 }): Promise<Task> {
-  const res = await fetch(API, {
+  const res = await apiFetch(API, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error('创建任务失败');
@@ -50,9 +50,8 @@ export async function updateTask(
     points: number;
   }>
 ): Promise<Task> {
-  const res = await fetch(`${API}/${id}`, {
+  const res = await apiFetch(`${API}/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error('更新任务失败');
@@ -60,12 +59,12 @@ export async function updateTask(
 }
 
 export async function deleteTask(id: number): Promise<void> {
-  const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
+  const res = await apiFetch(`${API}/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('删除任务失败');
 }
 
 export async function fetchTasksByDate(date: string): Promise<Task[]> {
-  const res = await fetch(`${API}/date/${date}`);
+  const res = await apiFetch(`${API}/date/${date}`);
   if (!res.ok) throw new Error('获取任务失败');
   return res.json();
 }

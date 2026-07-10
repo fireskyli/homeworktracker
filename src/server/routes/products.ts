@@ -33,16 +33,16 @@ const upload = multer({
 });
 
 // 验证家长密码的中间件
-async function verifyParentPassword(password: string): Promise<boolean> {
-  const setting = await prisma.setting.findUnique({ where: { key: 'parent_password' } });
+async function verifyParentPassword(password: string, userId: number): Promise<boolean> {
+  const setting = await prisma.setting.findFirst({ where: { key: 'parent_password', userId } });
   return setting?.value === password;
 }
 
 // 获取所有上架商品
-productsRouter.get('/', async (_req, res) => {
+productsRouter.get('/', async (req, res) => {
   try {
     const products = await prisma.product.findMany({
-      where: { isActive: 1 },
+      where: { isActive: 1, userId: req.userId },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
     });
     res.json(products);
@@ -60,7 +60,7 @@ productsRouter.post('/', upload.single('photo'), async (req, res) => {
       return res.status(400).json({ error: '商品名称和积分必填' });
     }
 
-    if (!await verifyParentPassword(password)) {
+    if (!await verifyParentPassword(password, req.userId)) {
       return res.status(403).json({ error: '密码错误' });
     }
 
@@ -71,6 +71,7 @@ productsRouter.post('/', upload.single('photo'), async (req, res) => {
         points: Number(points),
         photoUrl: req.file ? `/uploads/${req.file.filename}` : null,
         createdAt: new Date().toISOString(),
+        userId: req.userId,
       },
     });
     res.status(201).json(product);
@@ -84,9 +85,14 @@ productsRouter.put('/:id', upload.single('photo'), async (req, res) => {
   try {
     const { name, description, points, password } = req.body;
 
-    if (!await verifyParentPassword(password)) {
+    if (!await verifyParentPassword(password, req.userId)) {
       return res.status(403).json({ error: '密码错误' });
     }
+
+    const existing = await prisma.product.findFirst({
+      where: { id: Number(req.params.id), userId: req.userId },
+    });
+    if (!existing) return res.status(404).json({ error: '商品不存在' });
 
     const data: Record<string, unknown> = {};
     if (name !== undefined) data.name = name;
@@ -109,9 +115,14 @@ productsRouter.delete('/:id', async (req, res) => {
   try {
     const { password } = req.body;
 
-    if (!await verifyParentPassword(password)) {
+    if (!await verifyParentPassword(password, req.userId)) {
       return res.status(403).json({ error: '密码错误' });
     }
+
+    const existing = await prisma.product.findFirst({
+      where: { id: Number(req.params.id), userId: req.userId },
+    });
+    if (!existing) return res.status(404).json({ error: '商品不存在' });
 
     await prisma.product.update({
       where: { id: Number(req.params.id) },

@@ -1,4 +1,5 @@
 import { CheckIn } from '../types';
+import { apiFetch } from '../utils/api';
 
 const API = '/api/checkins';
 
@@ -9,9 +10,8 @@ export async function checkIn(
   date?: string,
   isMakeup?: boolean
 ): Promise<CheckIn & { earnedPoints: number }> {
-  const res = await fetch(API, {
+  const res = await apiFetch(API, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ taskId, quality, photoUrl, date, isMakeup }),
   });
   if (!res.ok) {
@@ -22,7 +22,7 @@ export async function checkIn(
 }
 
 export async function cancelCheckIn(id: number): Promise<void> {
-  const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
+  const res = await apiFetch(`${API}/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('取消打卡失败');
 }
 
@@ -32,7 +32,7 @@ export async function fetchTodayCheckins(): Promise<CheckIn[]> {
 }
 
 export async function fetchCheckinsByDate(date: string): Promise<CheckIn[]> {
-  const res = await fetch(`${API}/date/${date}`);
+  const res = await apiFetch(`${API}/date/${date}`);
   if (!res.ok) throw new Error('获取打卡记录失败');
   return res.json();
 }
@@ -41,7 +41,7 @@ export async function fetchCheckinsByRange(
   startDate: string,
   endDate: string
 ): Promise<CheckIn[]> {
-  const res = await fetch(`${API}/range?startDate=${startDate}&endDate=${endDate}`);
+  const res = await apiFetch(`${API}/range?startDate=${startDate}&endDate=${endDate}`);
   if (!res.ok) throw new Error('获取打卡记录失败');
   return res.json();
 }

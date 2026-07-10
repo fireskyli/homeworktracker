@@ -4,10 +4,10 @@ import { prisma } from '../db';
 export const exerciseTypeRouter = Router();
 
 // 获取所有活跃运动类型
-exerciseTypeRouter.get('/', async (_req, res) => {
+exerciseTypeRouter.get('/', async (req, res) => {
   try {
     const types = await prisma.exerciseType.findMany({
-      where: { isActive: 1 },
+      where: { isActive: 1, userId: req.userId },
       orderBy: { sortOrder: 'asc' },
     });
     res.json(types);
@@ -23,13 +23,14 @@ exerciseTypeRouter.post('/', async (req, res) => {
     if (!name) return res.status(400).json({ error: '运动名称必填' });
 
     // 验证家长密码
-    const setting = await prisma.setting.findUnique({ where: { key: 'parent_password' } });
+    const setting = await prisma.setting.findFirst({ where: { key: 'parent_password', userId: req.userId } });
     if (!setting || setting.value !== password) {
       return res.status(403).json({ error: '密码错误' });
     }
 
     const now = new Date().toISOString();
     const maxOrder = await prisma.exerciseType.findFirst({
+      where: { userId: req.userId },
       orderBy: { sortOrder: 'desc' },
       select: { sortOrder: true },
     });
@@ -41,6 +42,7 @@ exerciseTypeRouter.post('/', async (req, res) => {
         isPreset: 0,
         sortOrder: (maxOrder?.sortOrder || 0) + 1,
         createdAt: now,
+        userId: req.userId,
       },
     });
     res.status(201).json(type);
@@ -56,7 +58,7 @@ exerciseTypeRouter.put('/:id', async (req, res) => {
     const { name, emoji, unit, password } = req.body;
 
     // 验证家长密码
-    const setting = await prisma.setting.findUnique({ where: { key: 'parent_password' } });
+    const setting = await prisma.setting.findFirst({ where: { key: 'parent_password', userId: req.userId } });
     if (!setting || setting.value !== password) {
       return res.status(403).json({ error: '密码错误' });
     }
@@ -65,6 +67,9 @@ exerciseTypeRouter.put('/:id', async (req, res) => {
     if (name !== undefined) data.name = name;
     if (emoji !== undefined) data.emoji = emoji;
     if (unit !== undefined) data.unit = unit;
+
+    const existing = await prisma.exerciseType.findFirst({ where: { id, userId: req.userId } });
+    if (!existing) return res.status(404).json({ error: '运动类型不存在' });
 
     const type = await prisma.exerciseType.update({ where: { id }, data });
     res.json(type);
@@ -79,10 +84,13 @@ exerciseTypeRouter.delete('/:id', async (req, res) => {
     const { password } = req.body;
 
     // 验证家长密码
-    const setting = await prisma.setting.findUnique({ where: { key: 'parent_password' } });
+    const setting = await prisma.setting.findFirst({ where: { key: 'parent_password', userId: req.userId } });
     if (!setting || setting.value !== password) {
       return res.status(403).json({ error: '密码错误' });
     }
+
+    const existing = await prisma.exerciseType.findFirst({ where: { id: Number(req.params.id), userId: req.userId } });
+    if (!existing) return res.status(404).json({ error: '运动类型不存在' });
 
     await prisma.exerciseType.update({
       where: { id: Number(req.params.id) },

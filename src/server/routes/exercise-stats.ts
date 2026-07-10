@@ -46,7 +46,7 @@ function calcExerciseStreak(dates: string[]): { current: number; longest: number
 }
 
 // 概览统计
-exerciseStatsRouter.get('/overview', async (_req, res) => {
+exerciseStatsRouter.get('/overview', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
     const weekAgo = new Date();
@@ -54,9 +54,9 @@ exerciseStatsRouter.get('/overview', async (_req, res) => {
     const weekAgoStr = weekAgo.toISOString().split('T')[0];
 
     const [todayExercises, weekExercises, allExercises] = await Promise.all([
-      prisma.exercise.findMany({ where: { date: today } }),
-      prisma.exercise.findMany({ where: { date: { gte: weekAgoStr } } }),
-      prisma.exercise.findMany({ select: { date: true, quality: true } }),
+      prisma.exercise.findMany({ where: { date: today, userId: req.userId } }),
+      prisma.exercise.findMany({ where: { date: { gte: weekAgoStr }, userId: req.userId } }),
+      prisma.exercise.findMany({ where: { userId: req.userId }, select: { date: true, quality: true } }),
     ]);
 
     const todayCount = todayExercises.length;
@@ -87,7 +87,7 @@ exerciseStatsRouter.get('/by-type', async (req, res) => {
     const startDate = req.query.startDate ? String(req.query.startDate) : undefined;
     const endDate = req.query.endDate ? String(req.query.endDate) : undefined;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { userId: req.userId };
     if (startDate || endDate) {
       where.date = {};
       if (startDate) (where.date as Record<string, string>).gte = startDate;
@@ -125,7 +125,7 @@ exerciseStatsRouter.get('/calendar', async (req, res) => {
     const to = `${year}-${String(month).padStart(2, '0')}-31`;
 
     const exercises = await prisma.exercise.findMany({
-      where: { date: { gte: from, lte: to } },
+      where: { date: { gte: from, lte: to }, userId: req.userId },
     });
 
     const days: Record<string, number> = {};
@@ -151,7 +151,7 @@ exerciseStatsRouter.get('/trend', async (req, res) => {
     const toStr = now.toISOString().split('T')[0];
 
     const exercises = await prisma.exercise.findMany({
-      where: { date: { gte: fromStr, lte: toStr } },
+      where: { date: { gte: fromStr, lte: toStr }, userId: req.userId },
     });
 
     const byDate: Record<string, { count: number; suns: number }> = {};
@@ -183,12 +183,13 @@ exerciseStatsRouter.get('/history', async (req, res) => {
 
     const [exercises, total] = await Promise.all([
       prisma.exercise.findMany({
+        where: { userId: req.userId },
         include: { exerciseType: { select: { id: true, name: true, emoji: true, unit: true } } },
         orderBy: [{ date: 'desc' }, { completedAt: 'desc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
-      prisma.exercise.count(),
+      prisma.exercise.count({ where: { userId: req.userId } }),
     ]);
 
     res.json({ exercises, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
@@ -214,7 +215,7 @@ exerciseStatsRouter.get('/weekly', async (req, res) => {
     const sundayStr = sunday.toISOString().split('T')[0];
 
     const exercises = await prisma.exercise.findMany({
-      where: { date: { gte: mondayStr, lte: sundayStr } },
+      where: { date: { gte: mondayStr, lte: sundayStr }, userId: req.userId },
       include: { exerciseType: { select: { id: true, name: true, emoji: true, unit: true } } },
       orderBy: [{ date: 'asc' }, { completedAt: 'asc' }],
     });

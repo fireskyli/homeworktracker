@@ -157,3 +157,21 @@ export interface ExerciseWeeklyReport {
   }[];
   typeDist: { name: string; emoji: string; count: number; suns: number }[];
 }
+
+// 部署模式配置
+export interface AppConfig {
+  mode: 'standalone' | 'network';
+  features: {
+    auth: boolean;
+    registration: boolean;
+    multiFamily: boolean;
+  };
+}
+
+// 用户信息
+export interface UserInfo {
+  id: number;
+  email: string;
+  displayName: string;
+  role: string;
+}

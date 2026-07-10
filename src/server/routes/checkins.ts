@@ -9,7 +9,7 @@ checkinRouter.post('/', async (req, res) => {
     const { taskId, date, quality, photoUrl, note, isMakeup } = req.body;
     if (!taskId) return res.status(400).json({ error: 'taskId 必填' });
 
-    const task = await prisma.task.findUnique({ where: { id: Number(taskId) } });
+    const task = await prisma.task.findUnique({ where: { id: Number(taskId), userId: req.userId } });
     if (!task || !task.isActive) return res.status(404).json({ error: '任务不存在' });
 
     const today = date || new Date().toISOString().split('T')[0];
@@ -29,6 +29,7 @@ checkinRouter.post('/', async (req, res) => {
         photoUrl: photoUrl || null,
         note: note || null,
         isMakeup: isMakeup ? 1 : 0,
+        userId: req.userId,
       },
     });
 
@@ -45,7 +46,7 @@ checkinRouter.post('/', async (req, res) => {
 // 取消打卡
 checkinRouter.delete('/:id', async (req, res) => {
   try {
-    await prisma.checkIn.delete({ where: { id: Number(req.params.id) } });
+    await prisma.checkIn.delete({ where: { id: Number(req.params.id), userId: req.userId } });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: '取消打卡失败' });
@@ -56,7 +57,7 @@ checkinRouter.delete('/:id', async (req, res) => {
 checkinRouter.get('/date/:date', async (req, res) => {
   try {
     const checkins = await prisma.checkIn.findMany({
-      where: { date: req.params.date },
+      where: { date: req.params.date, userId: req.userId },
       orderBy: { completedAt: 'desc' },
     });
     res.json(checkins);
@@ -75,6 +76,7 @@ checkinRouter.get('/range', async (req, res) => {
           gte: String(startDate),
           lte: String(endDate),
         },
+        userId: req.userId,
       },
       orderBy: { date: 'asc' },
     });

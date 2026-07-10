@@ -33,7 +33,10 @@ export default function CheckInButton({ taskId, isCheckedIn, quality, photoUrl }
     formData.append('photo', file);
     try {
       setUploading(true);
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch('/api/upload', { method: 'POST', body: formData, headers });
       if (!res.ok) throw new Error('上传失败');
       const data = await res.json();
       setPhoto(data.url);

@@ -7,7 +7,7 @@ export const exerciseRouter = Router();
 exerciseRouter.get('/', async (req, res) => {
   try {
     const { startDate, endDate, typeId } = req.query;
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { userId: req.userId };
     if (startDate || endDate) {
       where.date = {};
       if (startDate) (where.date as Record<string, string>).gte = String(startDate);
@@ -33,11 +33,11 @@ exerciseRouter.get('/', async (req, res) => {
 });
 
 // 今日运动记录
-exerciseRouter.get('/today', async (_req, res) => {
+exerciseRouter.get('/today', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
     const exercises = await prisma.exercise.findMany({
-      where: { date: today },
+      where: { date: today, userId: req.userId },
       include: { exerciseType: true },
       orderBy: { completedAt: 'desc' },
     });
@@ -56,8 +56,8 @@ exerciseRouter.get('/today', async (_req, res) => {
 // 单条记录
 exerciseRouter.get('/:id', async (req, res) => {
   try {
-    const exercise = await prisma.exercise.findUnique({
-      where: { id: Number(req.params.id) },
+    const exercise = await prisma.exercise.findFirst({
+      where: { id: Number(req.params.id), userId: req.userId },
       include: { exerciseType: true },
     });
     if (!exercise) return res.status(404).json({ error: '记录不存在' });
@@ -73,7 +73,9 @@ exerciseRouter.post('/', async (req, res) => {
     const { exerciseTypeId, date, quality, sets, note } = req.body;
     if (!exerciseTypeId) return res.status(400).json({ error: 'exerciseTypeId 必填' });
 
-    const type = await prisma.exerciseType.findUnique({ where: { id: Number(exerciseTypeId) } });
+    const type = await prisma.exerciseType.findFirst({
+      where: { id: Number(exerciseTypeId), userId: req.userId },
+    });
     if (!type || !type.isActive) return res.status(404).json({ error: '运动类型不存在' });
 
     const today = date || new Date().toISOString().split('T')[0];
@@ -88,6 +90,7 @@ exerciseRouter.post('/', async (req, res) => {
         note: note || null,
         isMakeup: isMakeup ? 1 : 0,
         createdAt: new Date().toISOString(),
+        userId: req.userId,
       },
       include: { exerciseType: true },
     });
@@ -101,6 +104,11 @@ exerciseRouter.post('/', async (req, res) => {
 // 删除运动记录
 exerciseRouter.delete('/:id', async (req, res) => {
   try {
+    const existing = await prisma.exercise.findFirst({
+      where: { id: Number(req.params.id), userId: req.userId },
+    });
+    if (!existing) return res.status(404).json({ error: '记录不存在' });
+
     await prisma.exercise.delete({ where: { id: Number(req.params.id) } });
     res.json({ ok: true });
   } catch (err) {

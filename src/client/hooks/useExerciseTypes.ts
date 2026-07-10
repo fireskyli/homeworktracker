@@ -1,9 +1,10 @@
 import { ExerciseType } from '../types';
+import { apiFetch } from '../utils/api';
 
 const API = '/api/exercise-types';
 
 export async function fetchExerciseTypes(): Promise<ExerciseType[]> {
-  const res = await fetch(API);
+  const res = await apiFetch(API);
   if (!res.ok) throw new Error('获取运动类型失败');
   return res.json();
 }
@@ -14,9 +15,8 @@ export async function createExerciseType(data: {
   unit?: string;
   password?: string;
 }): Promise<ExerciseType> {
-  const res = await fetch(API, {
+  const res = await apiFetch(API, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -30,9 +30,8 @@ export async function updateExerciseType(
   id: number,
   data: Partial<{ name: string; emoji: string; unit: string; sortOrder: number; isActive: number }>
 ): Promise<ExerciseType> {
-  const res = await fetch(`${API}/${id}`, {
+  const res = await apiFetch(`${API}/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error('更新失败');
@@ -40,6 +39,6 @@ export async function updateExerciseType(
 }
 
 export async function deleteExerciseType(id: number): Promise<void> {
-  const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
+  const res = await apiFetch(`${API}/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('删除失败');
 }

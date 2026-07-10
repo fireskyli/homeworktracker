@@ -1,3 +1,5 @@
+import { apiFetch } from '../utils/api';
+
 export interface BackupInfo {
   name: string;
   size: number;
@@ -7,21 +9,20 @@ export interface BackupInfo {
 const API = '/api/backup';
 
 export async function fetchBackups(): Promise<BackupInfo[]> {
-  const res = await fetch(API);
+  const res = await apiFetch(API);
   if (!res.ok) throw new Error('获取备份列表失败');
   return res.json();
 }
 
 export async function createBackup(): Promise<{ ok: boolean; path: string }> {
-  const res = await fetch(API, { method: 'POST' });
+  const res = await apiFetch(API, { method: 'POST' });
   if (!res.ok) throw new Error('备份失败');
   return res.json();
 }
 
 export async function restoreBackup(name: string): Promise<{ ok: boolean }> {
-  const res = await fetch(`${API}/restore`, {
+  const res = await apiFetch(`${API}/restore`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),
   });
   if (!res.ok) {

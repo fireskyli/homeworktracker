@@ -38,6 +38,8 @@
 
 ## 快速启动
 
+> **默认单机模式**，零配置，开箱即用。无需设置任何环境变量。
+
 ### 1. 安装依赖
 
 ```bash
@@ -49,6 +51,8 @@ npm install
 ```bash
 npx prisma db push
 ```
+
+> 首次运行或 Schema 变更后执行。已创建过数据库则自动保留数据。
 
 ### 3. 启动服务
 
@@ -78,6 +82,47 @@ pkill -f "node"
 ```
 
 ***
+
+## 部署模式
+
+系统支持两种部署模式，通过 `DEPLOYMENT_MODE` 环境变量切换。
+
+> 📖 **零技术背景家长**请看这一步一步的图文教程：[网络版部署手册](docs/deploy-network.md)
+
+| 特性 | 单机模式（默认） | 网络模式 |
+|------|-----------------|----------|
+| 启动方式 | `npm run dev` 直接启动 | 设置 `DEPLOYMENT_MODE=network` |
+| 数据库 | SQLite 本地文件 | PostgreSQL 云端 |
+| 用户系统 | 无需登录 | 注册 + 登录 + JWT |
+| 数据隔离 | 单家庭 | 多家庭 userId 隔离 |
+| 家长密码 | 前端简单密码 | JWT + role 权限 |
+| 适用场景 | 家庭自用 / 局域网 | 多用户 SaaS |
+
+### 网络模式快速启动
+
+```bash
+# 1. 设置环境变量
+export DEPLOYMENT_MODE=network
+export DATABASE_URL=postgresql://user:password@host:5432/dbname
+export JWT_SECRET=your-secret-key
+
+# 2. 安装依赖 & 初始化
+npm install
+npx prisma db push
+
+# 3. 构建 & 启动
+npm run build
+npm start
+```
+
+### 从单机升级到网络模式
+
+```bash
+# 1. 在网络模式下注册新账号（获得 userId=123）
+# 2. 运行迁移脚本
+npx tsx scripts/migrate-standalone-to-user.ts 123
+# 3. 重启服务
+```
 
 ## 局域网手机访问
 
@@ -121,68 +166,75 @@ http://你的IP:5173
 
 ## 部署到免费托管平台
 
+> 托管部署推荐使用**网络模式**（`DEPLOYMENT_MODE=network`），配合 PostgreSQL 实现数据持久化。
+
 ### 方案一：Railway（推荐）
 
-Railway 提供免费的容器部署，支持 Node.js，每月有 500 小时免费额度。
+Railway 提供免费容器 + PostgreSQL，每月 500 小时免费额度。
 
 #### 步骤：
 
 1. **注册** — 前往 [railway.app](https://railway.app)，用 GitHub 账号登录
-2. **新建项目** — 点击 `New Project` → `Deploy from GitHub repo` → 选择 `homeworktracker`
-3. **配置启动命令** — 在 Railway 项目设置中，设置：
+2. **新建项目** → `Deploy from GitHub repo` → 选择 `homeworktracker`
+3. **添加 PostgreSQL** → `New` → `Database` → `PostgreSQL`
+4. **配置环境变量**：
    ```
-   Start Command: npm run build && npm start
-   ```
-4. **配置环境变量** — 添加：
-   ```
+   DEPLOYMENT_MODE = network
    NODE_ENV = production
-   PORT = 3000
-   DATABASE_URL = file:./prisma/homework.db
+   JWT_SECRET = 生成一个随机字符串
    ```
-5. **部署** — Railway 会自动检测 `package.json` 并部署
-
-> ⚠️ **注意**：Railway 的容器文件系统是只读的，SQLite 数据会在每次部署时重置。如需持久化数据，建议升级到付费版或使用外部数据库。
-
-***
+   `DATABASE_URL` 由 Railway 自动注入，无需手动设置
+5. **部署** — Railway 自动构建并部署
 
 ### 方案二：Render
 
-Render 提供免费的 Web 服务，每月 750 小时免费额度。
+Render 提供免费 Web 服务 + PostgreSQL，每月 750 小时免费额度。
 
 #### 步骤：
 
 1. **注册** — 前往 [render.com](https://render.com)，用 GitHub 账号登录
-2. **创建 Web Service** — 点击 `New` → `Web Service` → 连接 `homeworktracker` 仓库
-3. **配置**：
+2. **创建 PostgreSQL** → `New` → `PostgreSQL`
+3. **创建 Web Service** → 连接仓库，配置：
    - **Build Command**: `npm install && npm run build`
    - **Start Command**: `npm start`
-   - **Environment**: `Node`
 4. **添加环境变量**：
    ```
+   DEPLOYMENT_MODE = network
    NODE_ENV = production
+   JWT_SECRET = 生成一个随机字符串
+   DATABASE_URL = Render PostgreSQL 的连接地址
    ```
-5. **部署** — 点击 `Create Web Service`
+5. **部署**
 
-> ⚠️ **注意**：Render 免费版实例在 15 分钟无访问后会休眠，再次访问需要等待 30 秒左右冷启动。
-
-***
+> ⚠️ Render 免费版 15 分钟无访问会休眠，唤醒需约 30 秒
 
 ### 方案三：Zeet
 
-Zeet 提供免费的容器部署，配置简单。
+Zeet 提供免费容器部署。
 
 #### 步骤：
 
-1. **注册** — 前往 [zeet.co](https://zeet.co)，用 GitHub 账号登录
-2. **创建项目** — 选择 `homeworktracker` 仓库
-3. **部署** — Zeet 自动检测并部署
-4. **获取域名** — Zeet 会自动分配一个 `*.zeet.app` 域名
+1. **注册** — 前往 [zeet.co](https://zeet.co)，用 GitHub 登录
+2. **创建项目** → 选择仓库，Zeet 自动检测
+3. **配置环境变量**（同上）
+4. **部署** — 自动分配 `*.zeet.app` 域名
+
+### 方案四：Docker 自部署
+
+```bash
+docker build -t homeworktracker .
+docker run -d -p 3000:3000 \
+  -e DEPLOYMENT_MODE=network \
+  -e DATABASE_URL=postgresql://... \
+  -e JWT_SECRET=your-secret \
+  homeworktracker
+```
 
 ***
 
-### 方案四：自托管（树莓派 / 旧电脑）
+### 方案五：自托管（树莓派 / 旧电脑）
 
-如果家里有闲置的树莓派或旧电脑，可以 24 小时开机作为家庭服务器。
+单机模式，适合家庭自用。
 
 #### 步骤：
 
@@ -200,6 +252,7 @@ Zeet 提供免费的容器部署，配置简单。
 3. **安装依赖 & 构建**：
    ```bash
    npm install
+   npx prisma db push
    npm run build
    ```
 4. **使用 PM2 持久运行**：
@@ -210,12 +263,11 @@ Zeet 提供免费的容器部署，配置简单。
    pm2 startup
    ```
 5. **配置反向代理（可选）**：
-   使用 Nginx 将 80 端口代理到 3000 端口，这样访问时不需要带端口号。
+   使用 Nginx 将 80 端口代理到 3000 端口：
    ```nginx
    server {
        listen 80;
        server_name homework.local;
-
        location / {
            proxy_pass http://localhost:3000;
            proxy_http_version 1.1;

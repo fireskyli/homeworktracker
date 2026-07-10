@@ -4,6 +4,7 @@ import { TaskWithStatus, CheckIn, StatsOverview, StreakData } from './types';
 import { fetchTodayTasks, fetchTasks } from './hooks/useTasks';
 import { fetchTodayCheckins } from './hooks/useCheckins';
 import { fetchStatsOverview, fetchStreak, fetchPointsBalance } from './hooks/useStats';
+import { useConfig, useAuth } from './hooks/useConfig';
 import NavBar from './components/NavBar';
 import HomePage from './pages/HomePage';
 import TasksPage from './pages/TasksPage';
@@ -13,6 +14,7 @@ import WeeklyReportPage from './pages/WeeklyReportPage';
 import RedemptionPage from './pages/RedemptionPage';
 import MakeupPage from './pages/MakeupPage';
 import ExercisePage from './pages/ExercisePage';
+import LoginPage from './pages/LoginPage';
 
 interface AppContextType {
   tasks: TaskWithStatus[];
@@ -31,6 +33,9 @@ const AppContext = createContext<AppContextType>({} as AppContextType);
 export const useApp = () => useContext(AppContext);
 
 export default function App() {
+  const { config, loading: configLoading } = useConfig();
+  const { isAuthenticated, handleLoginSuccess } = useAuth(config);
+
   const [tasks, setTasks] = useState<TaskWithStatus[]>([]);
   const [allTasks, setAllTasks] = useState<TaskWithStatus[]>([]);
   const [todayCheckins, setTodayCheckins] = useState<CheckIn[]>([]);
@@ -61,8 +66,24 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    refreshData();
-  }, [refreshData]);
+    if (isAuthenticated) {
+      refreshData();
+    }
+  }, [refreshData, isAuthenticated]);
+
+  // 加载中
+  if (configLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-400 text-sm">加载中...</div>
+      </div>
+    );
+  }
+
+  // 网络模式 + 未登录 → 登录页
+  if (config && config.mode === 'network' && !isAuthenticated) {
+    return <LoginPage config={config} onLoginSuccess={handleLoginSuccess} />;
+  }
 
   return (
     <AppContext.Provider

@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -33,18 +34,39 @@ export async function initPresetExercises() {
   console.log('[Init] 预设运动类型已就绪');
 }
 
+// 哨兵用户：单机模式所有数据关联到此用户
+export async function initSentinelUser() {
+  const exists = await prisma.user.findUnique({ where: { id: 0 } });
+  if (!exists) {
+    const now = new Date().toISOString();
+    await prisma.user.create({
+      data: {
+        id: 0,
+        email: 'standalone@local',
+        passwordHash: await bcrypt.hash('__standalone__', 1),
+        displayName: '本地用户',
+        role: 'parent',
+        createdAt: now,
+        updatedAt: now,
+      },
+    });
+    console.log('[Init] 哨兵用户已创建 (id=0)');
+  }
+}
+
 /**
  * 计算积分余额（作业积分 + 运动积分 - 兑换消耗）
  * 作业积分：min(quality, task.points)，quality=0 不得分（1星=1分, 2星=2分, 3星=3分，上限为任务基础积分）
  * 运动积分：每个太阳☀️ = 1 积分
  */
-export async function calcPointsBalance(): Promise<{ totalEarned: number; totalSpent: number; balance: number }> {
+export async function calcPointsBalance(userId: number): Promise<{ totalEarned: number; totalSpent: number; balance: number }> {
   const [checkins, redemptions, exercises] = await Promise.all([
     prisma.checkIn.findMany({
+      where: { userId },
       include: { task: { select: { points: true } } },
     }),
-    prisma.redemption.aggregate({ where: { status: 'approved' }, _sum: { points: true } }),
-    prisma.exercise.findMany({ select: { quality: true } }),
+    prisma.redemption.aggregate({ where: { status: 'approved', userId }, _sum: { points: true } }),
+    prisma.exercise.findMany({ where: { userId }, select: { quality: true } }),
   ]);
 
   let totalEarned = 0;

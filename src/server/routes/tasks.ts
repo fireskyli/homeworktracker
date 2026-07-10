@@ -4,10 +4,10 @@ import { prisma } from '../db';
 export const taskRouter = Router();
 
 // 获取所有活跃任务
-taskRouter.get('/', async (_req, res) => {
+taskRouter.get('/', async (req, res) => {
   try {
     const tasks = await prisma.task.findMany({
-      where: { isActive: 1 },
+      where: { isActive: 1, userId: req.userId },
       orderBy: { sortOrder: 'asc' },
     });
     res.json(tasks);
@@ -17,24 +17,25 @@ taskRouter.get('/', async (_req, res) => {
 });
 
 // 获取今日任务（含打卡状态）
-taskRouter.get('/today', async (_req, res) => {
+taskRouter.get('/today', async (req, res) => {
   try {
     const now = new Date();
     const dayOfWeek = now.getDay();
     const todayStr = now.toISOString().split('T')[0];
 
     const tasks = await prisma.task.findMany({
-      where: { isActive: 1 },
+      where: { isActive: 1, userId: req.userId },
       orderBy: { sortOrder: 'asc' },
     });
 
     const todayCheckins = await prisma.checkIn.findMany({
-      where: { date: todayStr },
+      where: { date: todayStr, userId: req.userId },
     });
     const checkinMap = new Map(todayCheckins.map(c => [c.taskId, c]));
 
     // 获取所有打卡记录（用于判断一次性任务是否已完成过）
     const allCheckins = await prisma.checkIn.findMany({
+      where: { userId: req.userId },
       select: { taskId: true, date: true },
     });
     // 今天之前已完成打卡的一次性任务（不含今天）
@@ -89,17 +90,17 @@ taskRouter.get('/date/:date', async (req, res) => {
     const dayOfWeek = targetDate.getDay();
 
     const tasks = await prisma.task.findMany({
-      where: { isActive: 1 },
+      where: { isActive: 1, userId: req.userId },
       orderBy: { sortOrder: 'asc' },
     });
 
     const dayCheckins = await prisma.checkIn.findMany({
-      where: { date },
+      where: { date, userId: req.userId },
     });
     const checkinMap = new Set(dayCheckins.map(c => c.taskId));
 
     const allCheckins = await prisma.checkIn.findMany({
-      where: { date: { lt: date } },
+      where: { date: { lt: date }, userId: req.userId },
       select: { taskId: true },
     });
     const completedBefore = new Set(allCheckins.map(c => c.taskId));
@@ -140,7 +141,7 @@ taskRouter.get('/date/:date', async (req, res) => {
 // 获取单个任务
 taskRouter.get('/:id', async (req, res) => {
   try {
-    const task = await prisma.task.findUnique({ where: { id: Number(req.params.id) } });
+    const task = await prisma.task.findUnique({ where: { id: Number(req.params.id), userId: req.userId } });
     if (!task) return res.status(404).json({ error: '任务不存在' });
     res.json(task);
   } catch (err) {
@@ -166,6 +167,7 @@ taskRouter.post('/', async (req, res) => {
         repeatDays: JSON.stringify(repeatDays || []),
         startDate: startDate || null,
         points: points ?? 5,
+        userId: req.userId,
         createdAt: now,
         updatedAt: now,
       },
@@ -195,7 +197,7 @@ taskRouter.put('/:id', async (req, res) => {
     if (startDate !== undefined) data.startDate = startDate;
     if (points !== undefined) data.points = points;
 
-    const task = await prisma.task.update({ where: { id }, data });
+    const task = await prisma.task.update({ where: { id, userId: req.userId }, data });
     res.json(task);
   } catch (err) {
     res.status(500).json({ error: '更新任务失败' });
@@ -206,7 +208,7 @@ taskRouter.put('/:id', async (req, res) => {
 taskRouter.delete('/:id', async (req, res) => {
   try {
     await prisma.task.update({
-      where: { id: Number(req.params.id) },
+      where: { id: Number(req.params.id), userId: req.userId },
       data: { isActive: 0, updatedAt: new Date().toISOString() },
     });
     res.json({ ok: true });
@@ -219,7 +221,7 @@ taskRouter.delete('/:id', async (req, res) => {
 taskRouter.put('/:id/sort', async (req, res) => {
   try {
     const task = await prisma.task.update({
-      where: { id: Number(req.params.id) },
+      where: { id: Number(req.params.id), userId: req.userId },
       data: { sortOrder: req.body.sortOrder, updatedAt: new Date().toISOString() },
     });
     res.json(task);

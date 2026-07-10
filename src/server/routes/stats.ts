@@ -46,7 +46,7 @@ function calcStreak(dates: string[]): { current: number; longest: number } {
 }
 
 // 概览统计
-statsRouter.get('/overview', async (_req, res) => {
+statsRouter.get('/overview', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
     const weekAgo = new Date();
@@ -54,10 +54,10 @@ statsRouter.get('/overview', async (_req, res) => {
     const weekAgoStr = weekAgo.toISOString().split('T')[0];
 
     const [todayTasks, todayCheckins, weekCheckins, allCheckins] = await Promise.all([
-      prisma.task.count({ where: { isActive: 1 } }),
-      prisma.checkIn.count({ where: { date: today } }),
-      prisma.checkIn.findMany({ where: { date: { gte: weekAgoStr } } }),
-      prisma.checkIn.findMany({ select: { date: true } }),
+      prisma.task.count({ where: { isActive: 1, userId: req.userId } }),
+      prisma.checkIn.count({ where: { date: today, userId: req.userId } }),
+      prisma.checkIn.findMany({ where: { date: { gte: weekAgoStr }, userId: req.userId } }),
+      prisma.checkIn.findMany({ where: { userId: req.userId }, select: { date: true } }),
     ]);
 
     const todayRate = todayTasks > 0 ? Math.round((todayCheckins / todayTasks) * 100) : 0;
@@ -82,9 +82,9 @@ statsRouter.get('/overview', async (_req, res) => {
 });
 
 // 积分余额
-statsRouter.get('/points-balance', async (_req, res) => {
+statsRouter.get('/points-balance', async (req, res) => {
   try {
-    const { totalEarned, totalSpent, balance } = await calcPointsBalance();
+    const { totalEarned, totalSpent, balance } = await calcPointsBalance(req.userId);
     res.json({ totalEarned, totalSpent, balance });
   } catch (err) {
     res.status(500).json({ error: '查询失败' });
@@ -112,7 +112,7 @@ statsRouter.get('/completion-rate', async (req, res) => {
     const toStr = now.toISOString().split('T')[0];
 
     const checkins = await prisma.checkIn.findMany({
-      where: { date: { gte: fromStr, lte: toStr } },
+      where: { date: { gte: fromStr, lte: toStr }, userId: req.userId },
     });
 
     const byDate: Record<string, number> = {};
@@ -120,7 +120,7 @@ statsRouter.get('/completion-rate', async (req, res) => {
       byDate[c.date] = (byDate[c.date] || 0) + 1;
     }
 
-    const activeTaskCount = await prisma.task.count({ where: { isActive: 1 } });
+    const activeTaskCount = await prisma.task.count({ where: { isActive: 1, userId: req.userId } });
 
     const result: { date: string; rate: number }[] = [];
     const d = new Date(fromDate);
@@ -146,7 +146,7 @@ statsRouter.get('/subject', async (req, res) => {
     const startDate = String(req.query.startDate || '');
     const endDate = String(req.query.endDate || '');
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { userId: req.userId };
     if (startDate || endDate) {
       where.date = {};
       if (startDate) (where.date as Record<string, string>).gte = startDate;
@@ -179,7 +179,7 @@ statsRouter.get('/calendar', async (req, res) => {
     const to = `${year}-${String(month).padStart(2, '0')}-31`;
 
     const checkins = await prisma.checkIn.findMany({
-      where: { date: { gte: from, lte: to } },
+      where: { date: { gte: from, lte: to }, userId: req.userId },
     });
 
     const days: Record<string, number> = {};
@@ -212,18 +212,19 @@ statsRouter.get('/weekly', async (req, res) => {
 
     const [checkins, tasks, allCheckins, weekRedemptions, allRedemptions] = await Promise.all([
       prisma.checkIn.findMany({
-        where: { date: { gte: mondayStr, lte: sundayStr } },
+        where: { date: { gte: mondayStr, lte: sundayStr }, userId: req.userId },
         include: { task: { select: { name: true, subject: true, emoji: true, points: true } } },
         orderBy: { date: 'asc' },
       }),
-      prisma.task.findMany({ where: { isActive: 1 } }),
+      prisma.task.findMany({ where: { isActive: 1, userId: req.userId } }),
       prisma.checkIn.findMany({
+        where: { userId: req.userId },
         include: { task: { select: { points: true } } },
       }),
       prisma.redemption.findMany({
-        where: { date: { gte: mondayStr, lte: sundayStr }, status: 'approved' },
+        where: { date: { gte: mondayStr, lte: sundayStr }, status: 'approved', userId: req.userId },
       }),
-      prisma.redemption.findMany({ where: { status: 'approved' } }),
+      prisma.redemption.findMany({ where: { status: 'approved', userId: req.userId } }),
     ]);
 
     const totalTasks = tasks.length;
@@ -296,8 +297,6 @@ statsRouter.get('/weekly', async (req, res) => {
     const totalPointsSpent = weekRedemptions.reduce((s, r) => s + r.points, 0);
 
     // 使用开头已查的全量数据计算累计积分
-    const allTaskPointsMap = new Map(tasks.map(t => [t.id, t.points || 0]));
-    // 需要从 allCheckins 中获取 task points，allCheckins 已包含 task.points
     let lifetimeEarned = 0;
     for (const c of allCheckins) {
       const base = c.task?.points || 0;
@@ -337,9 +336,12 @@ statsRouter.get('/weekly', async (req, res) => {
 });
 
 // 连续打卡数据
-statsRouter.get('/streak', async (_req, res) => {
+statsRouter.get('/streak', async (req, res) => {
   try {
-    const checkins = await prisma.checkIn.findMany({ select: { date: true } });
+    const checkins = await prisma.checkIn.findMany({
+      where: { userId: req.userId },
+      select: { date: true },
+    });
     const dates = checkins.map(c => c.date);
     const streak = calcStreak(dates);
     res.json(streak);
