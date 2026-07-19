@@ -87,7 +87,9 @@ pkill -f "node"
 
 系统支持两种部署模式，通过 `DEPLOYMENT_MODE` 环境变量切换。
 
-> 📖 **零技术背景家长**请看这一步一步的图文教程：[网络版部署手册](docs/deploy-network.md)
+> 📖 部署手册：
+> - [Railway 方案](docs/deploy-network.md) — 最简单，全界面操作，$5/月
+> - [Fly.io 方案](docs/deploy-network-free.md) — 完全免费 24×7，需少量命令行
 
 | 特性 | 单机模式（默认） | 网络模式 |
 |------|-----------------|----------|
