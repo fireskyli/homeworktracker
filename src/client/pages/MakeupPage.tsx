@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useApp } from '../App';
 import { Task, TaskWithStatus } from '../types';
 import { fetchTasksByDate } from '../hooks/useTasks';
 import { checkIn } from '../hooks/useCheckins';
@@ -15,6 +16,7 @@ const subjectColors: Record<string, string> = {
 
 export default function MakeupPage() {
   const navigate = useNavigate();
+  const { refreshData } = useApp();
   const [date, setDate] = useState('');
   const [tasks, setTasks] = useState<TaskWithStatus[]>([]);
   const [loading, setLoading] = useState(false);
@@ -91,6 +93,7 @@ export default function MakeupPage() {
       );
       setMsg(`✅ 补打卡成功！获得 ${result.earnedPoints || 0} 积分`);
       await loadTasks();
+      await refreshData();
     } catch (err: unknown) {
       setMsg(`❌ ${(err as Error).message}`);
     } finally {
