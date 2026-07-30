@@ -4,7 +4,7 @@ import { apiFetch } from '../utils/api';
 const API = '/api/exercise-stats';
 
 export async function fetchExerciseOverview(): Promise<ExerciseStatsOverview> {
-
+  const res = await apiFetch(`${API}/overview`);
   if (!res.ok) throw new Error('获取运动统计失败');
   return res.json();
 }
