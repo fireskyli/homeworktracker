@@ -314,6 +314,16 @@ homeworkertacker/
 
 - **家长密码**：`1234`（首次使用后请在设置页修改）
 
+## 测试
+
+服务端核心逻辑使用 [Vitest](https://vitest.dev) + supertest 做真实 SQLite 集成测试（每个测试文件独立临时数据库）：
+
+```bash
+npm test              # 运行全部测试
+npm run test:coverage # 运行测试并输出覆盖率报告（coverage/ 目录，含 HTML）
+npm run test:watch    # 监听模式
+```
+
 ## 数据备份
 
 ### 自动备份
