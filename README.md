@@ -12,6 +12,8 @@
 - **响应式** — 适配桌面、平板、手机
 - **局域网访问** — 手机在同一 WiFi 下可直接访问
 - **数据备份** — 自动备份（每 6 小时），支持手动备份和恢复
+- **课程表** — 月历视图管理课程和补习班，支持每周重复/单次课程
+- **自动提醒** — 提前1天和提前30分钟浏览器通知 + 站内横幅提醒
 
 ## 界面预览
 
@@ -22,14 +24,17 @@
 
 ![家长管理](./screen/5.png)
 
+![课程表](./screen/schedule.png)
+
 ## 技术栈
 
 | 层次  | 技术                             |
 | --- | ------------------------------ |
 | 后端  | Node.js + Express + TypeScript |
 | 前端  | React 18 + Vite + TailwindCSS  |
-| 数据库 | SQLite + Prisma ORM            |
+| 数据库 | SQLite + Prisma ORM（支持 PostgreSQL） |
 | 图表  | Chart.js                       |
+| 部署  | Docker / PM2 / Railway / Fly.io |
 
 ## 环境要求
 
@@ -295,12 +300,27 @@ homeworkertacker/
 │   │   ├── app.ts         # Express 配置
 │   │   ├── db.ts          # Prisma 连接
 │   │   ├── backup.ts      # 自动备份模块
+│   │   ├── schedule-reminders.ts  # 提醒算法（纯函数）
 │   │   └── routes/        # API 路由
+│   │       ├── tasks.ts
+│   │       ├── checkins.ts
+│   │       ├── exercises.ts
+│   │       ├── schedules.ts  # 课程表 CRUD + 提醒
+│   │       └── ...
 │   └── client/            # 前端
 │       ├── App.tsx        # 根组件
 │       ├── components/    # 组件
+│   │       ├── NavBar.tsx
+│   │       └── ScheduleForm.tsx  # 课程表弹窗
 │       ├── pages/         # 页面
+│       │   ├── HomePage.tsx
+│       │   ├── ExercisePage.tsx
+│       │   ├── SchedulePage.tsx  # 课程表日历视图
+│       │   └── ...
 │       ├── hooks/         # 数据 hooks
+│       │   ├── useSchedules.ts
+│       │   ├── useScheduleReminders.ts
+│       │   └── ...
 │       └── types/         # 类型定义
 ├── uploads/               # 作业照片存储
 ├── backups/               # 数据库自动备份（本地保留，不提交 Git）
@@ -359,13 +379,30 @@ curl -X POST http://localhost:3000/api/backup/restore \
 
 ### Git 远程备份
 
-数据库文件位于 `prisma/homework.db`，已纳入 Git 管理。每次数据变更后提交即可备份到 GitHub：
+数据库文件位于 `prisma/homework.db`，已**不再纳入 Git 管理**。如需远程备份，建议：
 
-```bash
-git add -A
-git commit -m "backup: 数据更新"
-git push
-```
+1. **导出为 SQL**：`sqlite3 prisma/homework.db .dump > backup.sql`
+2. **使用托管数据库**：网络模式下由 PostgreSQL 提供持久化和自动备份
+3. **定期下载**：`backups/` 目录下的备份文件可手动归档
+
+### 课程表功能
+
+课程表是本次新增的核心功能，帮助学生和家长管理每周课程和补习班：
+
+**功能亮点：**
+
+- **月历视图** — 直观展示整月课程，按日期网格布局
+- **两种类型** — 🏫 学校课程（蓝色）/ 📚 补习班（橙色）
+- **重复规则** — 支持每周重复（选择星期几）或单次课程
+- **自动提醒** — 提前1天浏览器通知 + 提前30分钟站内横幅
+- **快速操作** — 点击日期新建，点击课程块编辑
+
+**提醒机制：**
+
+- 前端每 60 秒轮询 `/api/schedules/reminders/now`
+- 浏览器通知 + 站内横幅双通道
+- `localStorage` 去重，同一课程不重复提醒
+- 首次使用自动请求通知权限
 
 ## License
 
