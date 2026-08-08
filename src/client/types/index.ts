@@ -175,3 +175,22 @@ export interface UserInfo {
   displayName: string;
   role: string;
 }
+
+// 课程表
+export interface ScheduleEntry {
+  id: number;
+  name: string;
+  type: 'course' | 'tutoring';
+  emoji: string;
+  repeatType: 'weekly' | 'once';
+  repeatDays: number[]; // 0=周日..6=周六
+  date: string | null;
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+  location: string | null;
+  remindDayBefore: number;
+  remindMinBefore: number;
+  isActive: number;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -14,6 +14,7 @@ import { exerciseTypeRouter } from './routes/exercise-types';
 import { exerciseRouter } from './routes/exercises';
 import { exerciseStatsRouter } from './routes/exercise-stats';
 import { authRouter } from './routes/auth';
+import { scheduleRouter } from './routes/schedules';
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.use('/api/exercise-types', exerciseTypeRouter);
 app.use('/api/exercises', exerciseRouter);
 app.use('/api/exercise-stats', exerciseStatsRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/schedules', scheduleRouter);
 
 // ── 配置端点 ──────────────────────────────────────────
 app.get('/api/config', (_req, res) => {

@@ -5,6 +5,8 @@ import { fetchTodayTasks, fetchTasks } from './hooks/useTasks';
 import { fetchTodayCheckins } from './hooks/useCheckins';
 import { fetchStatsOverview, fetchStreak, fetchPointsBalance } from './hooks/useStats';
 import { useConfig, useAuth } from './hooks/useConfig';
+import { useScheduleReminders } from './hooks/useScheduleReminders';
+import { ScheduleReminder } from './hooks/useSchedules';
 import NavBar from './components/NavBar';
 import HomePage from './pages/HomePage';
 import TasksPage from './pages/TasksPage';
@@ -15,6 +17,7 @@ import RedemptionPage from './pages/RedemptionPage';
 import MakeupPage from './pages/MakeupPage';
 import ExercisePage from './pages/ExercisePage';
 import LoginPage from './pages/LoginPage';
+import SchedulePage from './pages/SchedulePage';
 
 interface AppContextType {
   tasks: TaskWithStatus[];
@@ -43,6 +46,9 @@ export default function App() {
   const [streak, setStreak] = useState<StreakData | null>(null);
   const [pointsBalance, setPointsBalance] = useState(0);
   const [isParentMode, setParentMode] = useState(false);
+  const [reminderBanner, setReminderBanner] = useState<ScheduleReminder | null>(null);
+
+  useScheduleReminders(r => setReminderBanner(r));
 
   const refreshData = useCallback(async () => {
     try {
@@ -101,6 +107,26 @@ export default function App() {
     >
       <BrowserRouter>
         <div className="min-h-screen bg-gray-50 max-w-[800px] mx-auto pb-20">
+          {reminderBanner && (
+            <div className="fixed top-0 left-0 right-0 z-50 px-4 py-3 bg-amber-100 border-b border-amber-200 max-w-[800px] mx-auto flex items-center justify-between">
+              <div className="text-sm text-amber-800">
+                <span className="mr-1">{reminderBanner.emoji}</span>
+                <strong>{reminderBanner.name}</strong>
+                <span className="text-amber-700">
+                  {reminderBanner.kind === 'day' ? ' 明天 ' : ' 即将开始 '}
+                  {reminderBanner.startTime}
+                  {reminderBanner.location ? ` @ ${reminderBanner.location}` : ''}
+                </span>
+              </div>
+              <button
+                onClick={() => setReminderBanner(null)}
+                className="text-amber-700 text-lg leading-none px-2"
+                aria-label="关闭"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/tasks" element={<TasksPage />} />
@@ -109,6 +135,7 @@ export default function App() {
             <Route path="/redeem" element={<RedemptionPage />} />
             <Route path="/makeup" element={<MakeupPage />} />
             <Route path="/exercise" element={<ExercisePage />} />
+            <Route path="/schedule" element={<SchedulePage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
           <NavBar />
