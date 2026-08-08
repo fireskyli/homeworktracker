@@ -10,9 +10,9 @@
     "start": "node dist/server/index.js",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
-    "test:watch": "vitest"
+    "test": "env NODE_OPTIONS=--experimental-require-module vitest run",
+    "test:coverage": "env NODE_OPTIONS=--experimental-require-module vitest run --coverage",
+    "test:watch": "env NODE_OPTIONS=--experimental-require-module vitest"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

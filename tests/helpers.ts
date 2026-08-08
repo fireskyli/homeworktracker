@@ -13,6 +13,7 @@ export async function resetDb(): Promise<void> {
     prisma.exerciseType.deleteMany(),
     prisma.setting.deleteMany(),
     prisma.task.deleteMany(),
+    prisma.scheduleEntry.deleteMany(),
     prisma.user.deleteMany({ where: { id: { not: 0 } } }),
   ]);
   await initSentinelUser();
