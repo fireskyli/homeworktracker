@@ -21,6 +21,9 @@ Thumbs.db
 # Backups (本地自动备份，不提交 Git)
 backups/
 
+# Test database (测试产生的临时数据库)
+prisma/prisma/homework.db
+
 # Logs
 *.log
 npm-debug.log*
