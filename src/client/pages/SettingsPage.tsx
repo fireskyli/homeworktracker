@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../App';
 import { fetchBackups, createBackup, restoreBackup, importBackup } from '../hooks/useBackups';
+import { formatVersion } from '../version';
 
 export default function SettingsPage() {
   const { isParentMode, setParentMode } = useApp();
@@ -249,7 +250,7 @@ export default function SettingsPage() {
       {/* 关于 */}
       <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
         <span className="text-3xl">📚</span>
-        <p className="text-sm text-gray-500 mt-2">小学生作业打卡系统 v1.0</p>
+        <p className="text-sm text-gray-500 mt-2">{formatVersion()}</p>
         <p className="text-xs text-gray-400 mt-1">让孩子养成好习惯 ✨</p>
       </div>
     </div>
