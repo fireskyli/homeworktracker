@@ -88,7 +88,7 @@ export interface Redemption {
   photoUrl: string | null;
   createdAt: string;
   productId?: number | null;
-  status?: string; // pending | approved | rejected
+  status?: string;
   appliedAt?: string | null;
   approvedAt?: string | null;
 }
@@ -158,7 +158,7 @@ export interface ExerciseWeeklyReport {
   typeDist: { name: string; emoji: string; count: number; suns: number }[];
 }
 
-// 部署模式配置
+// --
 export interface AppConfig {
   mode: 'standalone' | 'network';
   features: {
@@ -168,7 +168,7 @@ export interface AppConfig {
   };
 }
 
-// 用户信息
+// --
 export interface UserInfo {
   id: number;
   email: string;
@@ -176,7 +176,7 @@ export interface UserInfo {
   role: string;
 }
 
-// 课程表
+// --
 export interface ScheduleEntry {
   id: number;
   name: string;
@@ -193,4 +193,33 @@ export interface ScheduleEntry {
   isActive: number;
   createdAt: string;
   updatedAt: string;
+}
+
+// -- 课程出勤记录 --
+export interface ScheduleAttendance {
+  id: number;
+  scheduleId: number;
+  date: string;        // YYYY-MM-DD
+  status: 'attended' | 'makeup' | 'absent';
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// -- 月度出勤统计 --
+export interface ScheduleStats {
+  scheduleId: number;
+  name: string;
+  emoji: string;
+  type: 'course' | 'tutoring';
+  total: number;
+  attended: number;
+  makeup: number;
+  absent: number;
+  rate: number;  // 0-100
+}
+
+// -- 携带状态的课程条目 --
+export interface ScheduleEntryWithStatus extends ScheduleEntry {
+  todayStatus?: 'attended' | 'makeup' | 'absent' | 'pending';
 }

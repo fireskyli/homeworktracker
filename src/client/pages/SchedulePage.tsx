@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ScheduleEntry } from '../types';
+import { ScheduleEntry, ScheduleAttendance, ScheduleEntryWithStatus } from '../types';
 import { useApp } from '../App';
 import { fetchSchedules } from '../hooks/useSchedules';
+import { fetchAttendances } from '../hooks/useScheduleAttendance';
 import ScheduleForm from '../components/ScheduleForm';
+import AttendancePicker from '../components/AttendancePicker';
+import AttendanceStats from '../components/AttendanceStats';
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 const MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
@@ -20,31 +23,88 @@ function entryOccursOn(entry: ScheduleEntry, dateStr: string): boolean {
   return entry.date === dateStr;
 }
 
+/** 获取课程在某天的出勤状态 */
+function getAttendanceStatus(
+  entry: ScheduleEntry,
+  dateStr: string,
+  attendanceMap: Map<number, Map<string, string>>
+): 'attended' | 'makeup' | 'absent' | 'pending' | null {
+  // 先查是否发生
+  if (!entryOccursOn(entry, dateStr)) return null;
+
+  // 未来日期 = pending
+  const today = new Date().toISOString().split('T')[0];
+  if (dateStr > today) return 'pending';
+
+  // 查显式记录
+  const record = attendanceMap.get(entry.id)?.get(dateStr);
+  if (record) return record as 'attended' | 'makeup' | 'absent';
+
+  // 过去日期无记录 = 自动缺席
+  return 'absent';
+}
+
+/** 根据状态获取样式 */
+function getStatusStyle(status: 'attended' | 'makeup' | 'absent' | 'pending' | null, type: string): string {
+  if (status === 'attended') return 'bg-green-100 text-green-700';
+  if (status === 'makeup') return 'bg-blue-100 text-blue-700';
+  if (status === 'absent') return 'bg-red-100 text-red-700';
+  if (status === 'pending') return type === 'tutoring' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700';
+  return type === 'tutoring' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700';
+}
+
+function getStatusIcon(status: 'attended' | 'makeup' | 'absent' | 'pending' | null): string {
+  if (status === 'attended') return '✅';
+  if (status === 'makeup') return '🔄';
+  if (status === 'absent') return '❌';
+  return '';
+}
+
 export default function SchedulePage() {
   const { refreshData } = useApp();
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
+  const [attendances, setAttendances] = useState<ScheduleAttendance[]>([]);
   const [loading, setLoading] = useState(true);
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth());
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<ScheduleEntry | null>(null);
   const [defaultDate, setDefaultDate] = useState<string>();
+  // 出勤选择器
+  const [pickerEntry, setPickerEntry] = useState<ScheduleEntry | null>(null);
+  const [pickerDate, setPickerDate] = useState<string>('');
+  const [pickerStatus, setPickerStatus] = useState<'attended' | 'makeup' | 'absent' | null>(null);
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const list = await fetchSchedules();
       setEntries(list);
+
+      // 加载当月的出勤记录
+      const startDate = `${year}-${pad(month + 1)}-01`;
+      const endDate = `${year}-${pad(month + 1)}-${pad(new Date(year, month + 1, 0).getDate())}`;
+      const att = await fetchAttendances(startDate, endDate);
+      setAttendances(att);
     } catch (err) {
       console.error('加载课程失败:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [year, month]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // 构建出勤查询 map
+  const attendanceMap = new Map<number, Map<string, string>>();
+  for (const a of attendances) {
+    if (!attendanceMap.has(a.scheduleId)) {
+      attendanceMap.set(a.scheduleId, new Map());
+    }
+    attendanceMap.get(a.scheduleId)!.set(a.date, a.status);
+  }
 
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -77,6 +137,14 @@ export default function SchedulePage() {
     setEditing(entry);
     setDefaultDate(undefined);
     setShowForm(true);
+  }
+
+  function openPicker(entry: ScheduleEntry, date: string) {
+    const status = getAttendanceStatus(entry, date, attendanceMap);
+    if (status === 'pending') return; // 未来日期不可标记
+    setPickerEntry(entry);
+    setPickerDate(date);
+    setPickerStatus(status === 'absent' && !attendanceMap.get(entry.id)?.has(date) ? null : status);
   }
 
   return (
@@ -143,17 +211,28 @@ export default function SchedulePage() {
                 {day}
               </div>
               <div className="space-y-1 mt-1">
-                {occ.slice(0, 3).map(e => (
-                  <div
-                    key={e.id}
-                    onClick={ev => { ev.stopPropagation(); openEdit(e); }}
-                    className={`px-1 py-0.5 rounded text-[10px] leading-tight truncate cursor-pointer ${
-                      e.type === 'tutoring' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
-                    }`}
-                  >
-                    {e.emoji} {e.startTime} {e.name}
-                  </div>
-                ))}
+                {occ.slice(0, 3).map(e => {
+                  const status = getAttendanceStatus(e, dateStr(day), attendanceMap);
+                  const style = getStatusStyle(status, e.type);
+                  const icon = getStatusIcon(status);
+                  return (
+                    <div
+                      key={e.id}
+                      onClick={ev => {
+                        ev.stopPropagation();
+                        if (status !== 'pending') {
+                          openPicker(e, dateStr(day));
+                        } else {
+                          openEdit(e);
+                        }
+                      }}
+                      className={`px-1 py-0.5 rounded text-[10px] leading-tight truncate cursor-pointer ${style}`}
+                    >
+                      {icon && <span className="mr-0.5">{icon}</span>}
+                      {e.emoji} {e.startTime} {e.name}
+                    </div>
+                  );
+                })}
                 {occ.length > 3 && (
                   <div className="text-[10px] text-gray-400 px-1">+{occ.length - 3} 更多</div>
                 )}
@@ -164,18 +243,31 @@ export default function SchedulePage() {
       </div>
 
       {/* 图例 */}
-      <div className="flex items-center gap-4 mt-4 text-xs text-gray-500">
+      <div className="flex items-center gap-3 mt-4 text-xs text-gray-500 flex-wrap">
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded bg-blue-100 inline-block" /> 课程
+          <span className="w-3 h-3 rounded bg-green-100 inline-block" /> 上了
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded bg-blue-100 inline-block" /> 补上
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 rounded bg-red-100 inline-block" /> 缺席
         </span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 rounded bg-orange-100 inline-block" /> 补习班
         </span>
         <span className="text-gray-300">|</span>
-        <span>点击日期新建，点击课程编辑</span>
+        <span>点击课程标记出勤，点击日期新建</span>
       </div>
 
-      {/* 单次课程删除入口（编辑弹窗内） */}
+      {/* 出勤统计 */}
+      <AttendanceStats
+        year={year}
+        month={month}
+        onMonthChange={(y, m) => { setYear(y); setMonth(m); }}
+      />
+
+      {/* 表单弹窗 */}
       {showForm && (
         <ScheduleForm
           editing={editing}
@@ -190,6 +282,19 @@ export default function SchedulePage() {
             setShowForm(false);
             await loadData();
             await refreshData();
+          }}
+        />
+      )}
+
+      {/* 出勤选择器弹窗 */}
+      {pickerEntry && (
+        <AttendancePicker
+          entry={pickerEntry}
+          date={pickerDate}
+          currentStatus={pickerStatus}
+          onClose={() => setPickerEntry(null)}
+          onSaved={async () => {
+            await loadData();
           }}
         />
       )}

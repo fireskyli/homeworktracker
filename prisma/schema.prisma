@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ── 用户（网络模式专用，单机模式有哨兵行 id=0）──────
+// -- 用户（网络模式专用，单机模式有哨兵行 id=0）--
 model User {
   id           Int          @id @default(autoincrement())
   email        String       @unique
@@ -24,9 +24,10 @@ model User {
   exercises    Exercise[]
   settings     Setting[]
   schedules    ScheduleEntry[]
+  scheduleAttendances ScheduleAttendance[]
 }
 
-// ── 任务 ──────────────────────────────────────────
+// -- 任务 --
 model Task {
   id            Int        @id @default(autoincrement())
   name          String
@@ -34,12 +35,12 @@ model Task {
   emoji         String     @default("📚")
   estimatedMin  Int        @default(0)
   deadlineTime  String?
-  startDate     String?                   // 任务生效日期 YYYY-MM-DD（一次性任务用）
+  startDate     String?
   repeatType    String     @default("once") // once | daily | weekly
   repeatDays    String     @default("[]")   // JSON array [1,3,5]
   sortOrder     Int        @default(0)
-  isActive      Int        @default(1)      // 1=active, 0=deleted
-  points        Int        @default(3)       // 积分上限
+  isActive      Int        @default(1)
+  points        Int        @default(3)
   createdAt     String
   updatedAt     String
   userId        Int        @default(0)
@@ -47,14 +48,14 @@ model Task {
   checkins      CheckIn[]
 }
 
-// ── 打卡记录 ──────────────────────────────────────
+// -- 打卡记录 --
 model CheckIn {
   id           Int     @id @default(autoincrement())
   taskId       Int
   task         Task    @relation(fields: [taskId], references: [id])
-  date         String  // YYYY-MM-DD
-  completedAt  String  // ISO8601
-  quality      Int?    // 1-3 stars
+  date         String
+  completedAt  String
+  quality      Int?
   photoUrl     String?
   note         String?
   isMakeup     Int     @default(0)
@@ -64,23 +65,23 @@ model CheckIn {
   @@unique([taskId, date])
 }
 
-// ── 积分兑换 ──────────────────────────────────────
+// -- 积分兑换 --
 model Redemption {
   id          Int      @id @default(autoincrement())
-  name        String   // 兑换内容
-  points      Int      // 消耗积分
-  date        String   // YYYY-MM-DD
+  name        String
+  points      Int
+  date        String
   photoUrl    String?
   createdAt   String
-  productId   Int?     // 关联商品
-  status      String   @default("pending") // pending | approved | rejected
-  appliedAt   String?  // 申请时间
-  approvedAt  String?  // 审批时间
+  productId   Int?
+  status      String   @default("pending")
+  appliedAt   String?
+  approvedAt  String?
   userId      Int      @default(0)
   user        User?    @relation(fields: [userId], references: [id])
 }
 
-// ── 兑换商品 ──────────────────────────────────────
+// -- 兑换商品 --
 model Product {
   id          Int     @id @default(autoincrement())
   name        String
@@ -94,7 +95,7 @@ model Product {
   user        User?   @relation(fields: [userId], references: [id])
 }
 
-// ── 运动类型 ──────────────────────────────────────
+// -- 运动类型 --
 model ExerciseType {
   id          Int         @id @default(autoincrement())
   name        String
@@ -109,7 +110,7 @@ model ExerciseType {
   exercises   Exercise[]
 }
 
-// ── 运动记录 ──────────────────────────────────────
+// -- 运动记录 --
 model Exercise {
   id              Int          @id @default(autoincrement())
   exerciseTypeId  Int
@@ -125,7 +126,7 @@ model Exercise {
   user            User?        @relation(fields: [userId], references: [id])
 }
 
-// ── 设置 ──────────────────────────────────────────
+// -- 设置 --
 model Setting {
   key    String @id
   value  String
@@ -133,23 +134,40 @@ model Setting {
   user   User?  @relation(fields: [userId], references: [id])
 }
 
-// ── 课程表 ──────────────────────────────────────
+// -- 课程表 --
 model ScheduleEntry {
   id             Int    @id @default(autoincrement())
   name           String
-  type           String      @default("course") // course | tutoring
+  type           String      @default("course")
   emoji          String      @default("📖")
-  repeatType     String      @default("weekly") // weekly | once
-  repeatDays     String      @default("[]")       // JSON array [1,3,5] (1=周一)
-  date           String?     // YYYY-MM-DD 单次课程日期
-  startTime      String      // HH:mm
-  endTime        String      // HH:mm
+  repeatType     String      @default("weekly")
+  repeatDays     String      @default("[]")
+  date           String?
+  startTime      String
+  endTime        String
   location       String?
-  remindDayBefore Int        @default(1)  // 提前天数
-  remindMinBefore Int        @default(30) // 提前分钟
+  remindDayBefore Int        @default(1)
+  remindMinBefore Int        @default(30)
   isActive       Int         @default(1)
   createdAt      String
   updatedAt      String
   userId         Int         @default(0)
   user           User?       @relation(fields: [userId], references: [id])
+  attendances    ScheduleAttendance[]
+}
+
+// -- 课程出勤记录 --
+model ScheduleAttendance {
+  id          Int       @id @default(autoincrement())
+  scheduleId  Int
+  schedule    ScheduleEntry @relation(fields: [scheduleId], references: [id])
+  date        String
+  status      String    @default("attended")
+  note        String?
+  createdAt   String
+  updatedAt   String
+  userId      Int       @default(0)
+  user        User?     @relation(fields: [userId], references: [id])
+
+  @@unique([scheduleId, date])
 }

@@ -12,14 +12,15 @@ export async function resetDb(): Promise<void> {
     prisma.product.deleteMany(),
     prisma.exerciseType.deleteMany(),
     prisma.setting.deleteMany(),
-    prisma.task.deleteMany(),
+    prisma.scheduleAttendance.deleteMany(),
     prisma.scheduleEntry.deleteMany(),
+    prisma.task.deleteMany(),
     prisma.user.deleteMany({ where: { id: { not: 0 } } }),
   ]);
   await initSentinelUser();
 }
 
-/** 与服务端一致的“今天”字符串（UTC） */
+/** 与服务端一致的"今天"字符串（UTC） */
 export function todayStr(): string {
   return new Date().toISOString().split('T')[0];
 }

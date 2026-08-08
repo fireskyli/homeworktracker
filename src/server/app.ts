@@ -15,20 +15,21 @@ import { exerciseRouter } from './routes/exercises';
 import { exerciseStatsRouter } from './routes/exercise-stats';
 import { authRouter } from './routes/auth';
 import { scheduleRouter } from './routes/schedules';
+import { scheduleAttendanceRouter } from './routes/schedule-attendance';
 
 const app = express();
 
-// ── Middleware ──────────────────────────────────────────
+// -- Middleware --
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 认证中间件：两种模式，同一份路由代码
+// -- --
 app.use(createAuthMiddleware());
 
-// ── Static files ──────────────────────────────────────
+// -- Static files --
 app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 
-// ── API Routes ────────────────────────────────────────
+// -- API Routes --
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
 });
@@ -45,14 +46,15 @@ app.use('/api/exercise-types', exerciseTypeRouter);
 app.use('/api/exercises', exerciseRouter);
 app.use('/api/exercise-stats', exerciseStatsRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/schedules', scheduleAttendanceRouter);
 app.use('/api/schedules', scheduleRouter);
 
-// ── 配置端点 ──────────────────────────────────────────
+// -- --
 app.get('/api/config', (_req, res) => {
   res.json({ mode: DEPLOYMENT_MODE, features: FEATURES });
 });
 
-// ── Production: serve built frontend ──────────────────
+// -- Production: serve built frontend --
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client')));
   app.get('*', (_req, res) => {
