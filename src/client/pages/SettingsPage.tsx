@@ -18,6 +18,30 @@ export default function SettingsPage() {
   const [pushMsg, setPushMsg] = useState('');
   const [pushLoading, setPushLoading] = useState(false);
   const [testingPush, setTestingPush] = useState(false);
+  const [parentPw, setParentPw] = useState('');
+  const [parentPwError, setParentPwError] = useState('');
+  const [showParentGate, setShowParentGate] = useState(false);
+
+  async function handleEnableParentMode() {
+    try {
+      const res = await fetch('/api/settings/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: parentPw }),
+      });
+      if (res.ok) {
+        setParentMode(true);
+        localStorage.setItem('parentMode', 'true');
+        setParentPw('');
+        setParentPwError('');
+        setShowParentGate(false);
+      } else {
+        setParentPwError('密码错误');
+      }
+    } catch {
+      setParentPwError('验证失败');
+    }
+  }
 
   // 加载推送配置
   useEffect(() => {
@@ -163,6 +187,8 @@ export default function SettingsPage() {
               if (isParentMode) {
                 setParentMode(false);
                 localStorage.removeItem('parentMode');
+              } else {
+                setShowParentGate(true);
               }
             }}
             className={`w-12 h-7 rounded-full transition-colors ${isParentMode ? 'bg-blue-500' : 'bg-gray-300'}`}
@@ -184,6 +210,41 @@ export default function SettingsPage() {
           </button>
         )}
       </div>
+
+      {/* 家长模式验证弹窗 */}
+      {showParentGate && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white w-full max-w-xs rounded-2xl p-6 mx-4">
+            <h3 className="text-lg font-bold mb-4 text-center">🔒 家长验证</h3>
+            <input
+              type="password"
+              value={parentPw}
+              onChange={e => setParentPw(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleEnableParentMode()}
+              placeholder="请输入家长密码"
+              autoFocus
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-base text-center focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+            />
+            {parentPwError && (
+              <p className="text-red-500 text-sm text-center mb-3">{parentPwError}</p>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowParentGate(false); setParentPw(''); setParentPwError(''); }}
+                className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-600 text-base font-medium"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleEnableParentMode}
+                className="flex-1 py-2.5 rounded-xl bg-blue-500 text-white text-base font-medium"
+              >
+                确认
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 修改密码 */}
       {isParentMode && (
