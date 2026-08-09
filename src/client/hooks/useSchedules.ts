@@ -139,3 +139,36 @@ export async function manualPushWeekly(): Promise<string> {
   const data = await res.json();
   return data.message || '推送成功';
 }
+
+/** 手动推送今日学习任务（强制推送，忽略去重） */
+export async function manualPushTodayTasks(): Promise<string> {
+  const res = await apiFetch('/api/schedule-push-config/task/today', { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: '推送失败' }));
+    throw new Error(err.error || '推送失败');
+  }
+  const data = await res.json();
+  return data.message || '推送成功';
+}
+
+/** 手动推送今日任务完成总结（强制推送，忽略去重） */
+export async function manualPushDailySummary(): Promise<string> {
+  const res = await apiFetch('/api/schedule-push-config/task/daily-summary', { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: '推送失败' }));
+    throw new Error(err.error || '推送失败');
+  }
+  const data = await res.json();
+  return data.message || '推送成功';
+}
+
+/** 手动推送本周任务完成总结（强制推送，忽略去重） */
+export async function manualPushWeeklySummary(): Promise<string> {
+  const res = await apiFetch('/api/schedule-push-config/task/weekly-summary', { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: '推送失败' }));
+    throw new Error(err.error || '推送失败');
+  }
+  const data = await res.json();
+  return data.message || '推送成功';
+}

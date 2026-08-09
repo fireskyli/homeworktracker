@@ -107,3 +107,80 @@ export function buildClassReminderMarkdown(
   const place = item.appName ? `【${item.appName}】` : item.location ? `📍${item.location}` : '';
   return `### ⏰ 上课提醒 · ${KEYWORD}\n\n${item.emoji} **${item.name}** 将在 ${item.startTime} 开始（${item.endTime} 结束）\n\n${place}`;
 }
+// ── 学习任务推送 Markdown ──────────────────────────
+
+/** 生成今日学习任务 Markdown（含钉钉关键词） */
+export function buildTodayTaskMarkdown(
+  items: { name: string; subject: string; emoji: string; estimatedMin: number }[]
+): string {
+  if (items.length === 0) {
+    return '#### 📋 今日学习任务 · ' + KEYWORD + '\n\n今天没有安排学习任务，好好玩玩吧！';
+  }
+  const lines = ['#### 📋 今日学习任务 · ' + KEYWORD, ''];
+  items.forEach((it, i) => {
+    const min = it.estimatedMin > 0 ? '（约 ' + it.estimatedMin + ' 分钟）' : '';
+    lines.push((i + 1) + '. ' + it.emoji + ' **' + it.name + '** · ' + it.subject + min);
+  });
+  lines.push('', '共 ' + items.length + ' 项，加油完成！💪');
+  return lines.join('\n');
+}
+
+type SummaryItem = {
+  name: string;
+  subject: string;
+  emoji: string;
+  quality: number | null;
+  pointsEarned: number;
+};
+
+/** 生成今日任务完成总结 Markdown（含钉钉关键词） */
+export function buildDailySummaryMarkdown(data: {
+  date: string;
+  total: number;
+  done: number;
+  rate: number;
+  pointsEarned: number;
+  items: SummaryItem[];
+}): string {
+  const lines = ['#### ✅ 今日任务完成总结 · ' + KEYWORD, ''];
+  lines.push('**' + data.date + '** 共 ' + data.total + ' 项，完成 ' + data.done + ' 项（' + data.rate + '%）');
+  lines.push('获得积分：**' + data.pointsEarned + '**', '');
+  if (data.items.length === 0) {
+    lines.push('今天还没有任务完成记录。');
+  } else {
+    lines.push('**已完成：**');
+    data.items.forEach(it => {
+      const stars = it.quality ? '⭐'.repeat(it.quality) : '';
+      lines.push('- ' + it.emoji + ' ' + it.name + '（' + it.subject + '）' + stars + ' +' + it.pointsEarned + '分');
+    });
+  }
+  return lines.join('\n');
+}
+
+/** 生成本周任务完成总结 Markdown（含钉钉关键词） */
+export function buildWeeklySummaryMarkdown(data: {
+  weekStart: string;
+  weekEnd: string;
+  total: number;
+  done: number;
+  rate: number;
+  checkinDays: number;
+  pointsEarned: number;
+  subjectDist: Record<string, number>;
+}): string {
+  const lines = ['#### 📊 本周任务完成总结 · ' + KEYWORD, ''];
+  lines.push('**' + data.weekStart + ' ~ ' + data.weekEnd + '**');
+  lines.push('');
+  lines.push('本周任务完成 **' + data.done + '** 次，完成率 **' + data.rate + '%**');
+  lines.push('打卡天数：**' + data.checkinDays + '** 天');
+  lines.push('获得积分：**' + data.pointsEarned + '**', '');
+  const subjects = Object.entries(data.subjectDist);
+  if (subjects.length > 0) {
+    lines.push('**分科目完成情况：**');
+    subjects.forEach(([sub, count]) => {
+      lines.push('- ' + sub + '：' + count + ' 次');
+    });
+  }
+  lines.push('', '继续坚持，下周更棒！🌟');
+  return lines.join('\n');
+}

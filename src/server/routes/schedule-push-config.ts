@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getPushConfig, savePushConfig, pushDailySchedule, pushWeeklySchedule } from '../schedule-push';
+import { pushTodayTasks, pushDailySummary, pushWeeklySummary } from '../task-push';
 import { sendDingtalkMarkdown, isValidDingtalkWebhook } from '../notifier';
 
 export const pushConfigRouter = Router();
@@ -44,6 +45,48 @@ pushConfigRouter.post('/weekly', async (req, res) => {
   try {
     const ok = await pushWeeklySchedule(req.userId);
     if (ok) return res.json({ ok: true, message: '未来7天总览已推送' });
+    const config = await getPushConfig(req.userId);
+    if (!config.enabled) return res.status(400).json({ error: '推送未开启' });
+    if (!config.webhook) return res.status(400).json({ error: 'webhook 未配置' });
+    return res.status(500).json({ error: '推送失败' });
+  } catch (err) {
+    res.status(500).json({ error: `推送失败: ${(err as Error).message}` });
+  }
+});
+
+// 手动推送今日学习任务（强制推送，忽略去重）
+pushConfigRouter.post('/task/today', async (req, res) => {
+  try {
+    const ok = await pushTodayTasks(req.userId);
+    if (ok) return res.json({ ok: true, message: '今日学习任务已推送' });
+    const config = await getPushConfig(req.userId);
+    if (!config.enabled) return res.status(400).json({ error: '推送未开启' });
+    if (!config.webhook) return res.status(400).json({ error: 'webhook 未配置' });
+    return res.status(500).json({ error: '推送失败' });
+  } catch (err) {
+    res.status(500).json({ error: `推送失败: ${(err as Error).message}` });
+  }
+});
+
+// 手动推送今日任务完成总结（强制推送，忽略去重）
+pushConfigRouter.post('/task/daily-summary', async (req, res) => {
+  try {
+    const ok = await pushDailySummary(req.userId);
+    if (ok) return res.json({ ok: true, message: '今日任务总结已推送' });
+    const config = await getPushConfig(req.userId);
+    if (!config.enabled) return res.status(400).json({ error: '推送未开启' });
+    if (!config.webhook) return res.status(400).json({ error: 'webhook 未配置' });
+    return res.status(500).json({ error: '推送失败' });
+  } catch (err) {
+    res.status(500).json({ error: `推送失败: ${(err as Error).message}` });
+  }
+});
+
+// 手动推送本周任务完成总结（强制推送，忽略去重）
+pushConfigRouter.post('/task/weekly-summary', async (req, res) => {
+  try {
+    const ok = await pushWeeklySummary(req.userId);
+    if (ok) return res.json({ ok: true, message: '本周任务总结已推送' });
     const config = await getPushConfig(req.userId);
     if (!config.enabled) return res.status(400).json({ error: '推送未开启' });
     if (!config.webhook) return res.status(400).json({ error: 'webhook 未配置' });

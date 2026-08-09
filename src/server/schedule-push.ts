@@ -15,6 +15,14 @@ import {
 } from './notifier';
 import { computeDueReminders, ReminderRule } from './schedule-reminders';
 import { pushBreaker } from './schedule-push-guard';
+import {
+  pushTodayTasks,
+  pushDailySummary,
+  pushWeeklySummary,
+  hasTodayTaskPushed,
+  hasDailySummaryPushed,
+  hasWeeklySummaryPushed,
+} from './task-push';
 
 // Setting keys
 const KEY_WEBHOOK = 'dingtalk:webhook';
@@ -69,13 +77,13 @@ export async function savePushConfig(
 }
 
 /** 读取某 key 的 Setting 值 */
-async function getSetting(key: string, userId: number): Promise<string | null> {
+export async function getSetting(key: string, userId: number): Promise<string | null> {
   const s = await prisma.setting.findUnique({ where: { key, userId } });
   return s?.value ?? null;
 }
 
 /** 写入某 key 的 Setting 值 */
-async function setSetting(key: string, value: string, userId: number): Promise<void> {
+export async function setSetting(key: string, value: string, userId: number): Promise<void> {
   await prisma.setting.upsert({
     where: { key, userId },
     update: { value },
@@ -200,7 +208,7 @@ export async function pushClassReminders(userId = STANDALONE_USER_ID): Promise<n
  * 在熔断保护下运行一个推送任务。
  * 熔断打开时直接跳过；运行成功重置熔断，失败则记录到熔断器。
  */
-async function runSafely(task: () => Promise<unknown> | unknown, label: string): Promise<void> {
+export async function runSafely(task: () => Promise<unknown> | unknown, label: string): Promise<void> {
   // 冷却到期先自动恢复，再判断是否仍处于熔断
   pushBreaker.maybeRecover();
   if (pushBreaker.isOpen()) {
@@ -218,7 +226,7 @@ async function runSafely(task: () => Promise<unknown> | unknown, label: string):
 
 /** 启动推送调度：开机补发当日课表 + 7天总览 + 设定时器 */
 export function startSchedulePush(userId = STANDALONE_USER_ID): void {
-  // 开机补发：若今天还没推过今日课表/7天总览，立即推送（受熔断保护）
+  // 开机补发：若今天还没推过今日课表/7天总览/今日学习任务，立即推送（受熔断保护）
   void (async () => {
     const todayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
     const lastDaily = await getSetting(KEY_LAST_DAILY, userId);
@@ -228,6 +236,10 @@ export function startSchedulePush(userId = STANDALONE_USER_ID): void {
     const lastWeekly = await getSetting(KEY_LAST_WEEKLY, userId);
     if (lastWeekly !== todayStr) {
       await runSafely(() => pushWeeklySchedule(userId), '开机补发7天总览');
+    }
+    // 开机时若今日学习任务还没推过，则立即补发一次
+    if (!(await hasTodayTaskPushed(userId))) {
+      await runSafely(() => pushTodayTasks(userId), '开机补发今日学习任务');
     }
   })();
 
@@ -245,8 +257,29 @@ export function startSchedulePush(userId = STANDALONE_USER_ID): void {
     }
   }, 60 * 1000);
 
+  // 学习任务调度：
+  // 07:00 推今日学习任务；21:00 推今日完成总结；每周日 22:00 推本周总结
+  const taskTimer = setInterval(() => {
+    const now = new Date();
+    const h = now.getHours();
+    const m = now.getMinutes();
+    // 07:00 今日学习任务
+    if (h === 7 && m === 0) {
+      void runSafely(() => pushTodayTasks(userId), '今日学习任务推送');
+    }
+    // 21:00 今日完成总结
+    if (h === 21 && m === 0) {
+      void runSafely(() => pushDailySummary(userId), '今日任务总结推送');
+    }
+    // 每周日 22:00 本周总结
+    if (now.getDay() === 0 && h === 22 && m === 0) {
+      void runSafely(() => pushWeeklySummary(userId), '本周任务总结推送');
+    }
+  }, 60 * 1000);
+
   // 防止定时器阻止进程退出
   minuteTimer.unref?.();
   dailyTimer.unref?.();
-  console.log(`[Push] 课程推送调度已启动（开机补发 + 每日 ${DAILY_PUSH_TIME.hour}:${String(DAILY_PUSH_TIME.minute).padStart(2, '0')} + 上课前${CLASS_REMIND_MIN}分钟 + 熔断保护）`);
+  taskTimer.unref?.();
+  console.log(`[Push] 推送调度已启动（课程：今日课表 07:00 + 上课前${CLASS_REMIND_MIN}分钟；任务：今日任务 07:00 + 今日总结 21:00 + 周总结 周日22:00；开机补发 + 熔断保护）`);
 }

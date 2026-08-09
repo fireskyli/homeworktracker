@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../App';
 import { fetchBackups, createBackup, restoreBackup, importBackup } from '../hooks/useBackups';
-import { fetchPushConfig, savePushConfig, testPush, PushConfig, manualPushToday, manualPushWeekly } from '../hooks/useSchedules';
+import { fetchPushConfig, savePushConfig, testPush, PushConfig, manualPushToday, manualPushWeekly, manualPushTodayTasks, manualPushDailySummary, manualPushWeeklySummary } from '../hooks/useSchedules';
 import { formatVersion } from '../version';
 
 export default function SettingsPage() {
@@ -20,6 +20,9 @@ export default function SettingsPage() {
   const [testingPush, setTestingPush] = useState(false);
   const [manualPushing, setManualPushing] = useState(false);
   const [weeklyPushing, setWeeklyPushing] = useState(false);
+  const [taskTodayPushing, setTaskTodayPushing] = useState(false);
+  const [taskDailySummaryPushing, setTaskDailySummaryPushing] = useState(false);
+  const [taskWeeklySummaryPushing, setTaskWeeklySummaryPushing] = useState(false);
   const [parentPw, setParentPw] = useState('');
   const [parentPwError, setParentPwError] = useState('');
   const [showParentGate, setShowParentGate] = useState(false);
@@ -102,6 +105,48 @@ export default function SettingsPage() {
       setPushMsg(`❌ ${(err as Error).message}`);
     } finally {
       setWeeklyPushing(false);
+    }
+    setTimeout(() => setPushMsg(''), 4000);
+  }
+
+  async function handleTaskTodayPush() {
+    setTaskTodayPushing(true);
+    setPushMsg('');
+    try {
+      const msg = await manualPushTodayTasks();
+      setPushMsg(`✅ ${msg}`);
+    } catch (err) {
+      setPushMsg(`❌ ${(err as Error).message}`);
+    } finally {
+      setTaskTodayPushing(false);
+    }
+    setTimeout(() => setPushMsg(''), 4000);
+  }
+
+  async function handleTaskDailySummaryPush() {
+    setTaskDailySummaryPushing(true);
+    setPushMsg('');
+    try {
+      const msg = await manualPushDailySummary();
+      setPushMsg(`✅ ${msg}`);
+    } catch (err) {
+      setPushMsg(`❌ ${(err as Error).message}`);
+    } finally {
+      setTaskDailySummaryPushing(false);
+    }
+    setTimeout(() => setPushMsg(''), 4000);
+  }
+
+  async function handleTaskWeeklySummaryPush() {
+    setTaskWeeklySummaryPushing(true);
+    setPushMsg('');
+    try {
+      const msg = await manualPushWeeklySummary();
+      setPushMsg(`✅ ${msg}`);
+    } catch (err) {
+      setPushMsg(`❌ ${(err as Error).message}`);
+    } finally {
+      setTaskWeeklySummaryPushing(false);
     }
     setTimeout(() => setPushMsg(''), 4000);
   }
@@ -441,6 +486,39 @@ export default function SettingsPage() {
           <p className="text-xs text-gray-400 mt-3">
             如何获取 webhook：钉钉群 → 群设置 → 智能群助手 → 添加机器人 → 自定义 → 复制 webhook 地址
           </p>
+        </div>
+      )}
+
+      {/* 学习任务推送 */}
+      {isParentMode && (
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-4">
+          <h3 className="font-medium text-base mb-1">📝 学习任务推送（钉钉）</h3>
+          <p className="text-sm text-gray-400 mb-3">
+            每天 07:00 推送今日学习任务，21:00 推送今日完成总结，每周日 22:00 推送本周总结（复用上方 webhook 配置）
+          </p>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={handleTaskTodayPush}
+              disabled={taskTodayPushing}
+              className="w-full py-2 bg-blue-500 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+            >
+              {taskTodayPushing ? '推送中...' : '📋 今日学习任务'}
+            </button>
+            <button
+              onClick={handleTaskDailySummaryPush}
+              disabled={taskDailySummaryPushing}
+              className="w-full py-2 bg-green-500 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+            >
+              {taskDailySummaryPushing ? '推送中...' : '✅ 今日任务总结'}
+            </button>
+            <button
+              onClick={handleTaskWeeklySummaryPush}
+              disabled={taskWeeklySummaryPushing}
+              className="w-full py-2 bg-purple-500 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+            >
+              {taskWeeklySummaryPushing ? '推送中...' : '📊 本周任务总结'}
+            </button>
+          </div>
         </div>
       )}
 
