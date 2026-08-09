@@ -4,6 +4,9 @@
 
 const DINGTALK_WEBHOOK_PREFIX = 'https://oapi.dingtalk.com/robot/send?access_token=';
 
+// 钉钉自定义机器人「自定义关键词」安全校验要求：每条消息必须包含此关键词
+const KEYWORD = '励夏的课程';
+
 /** 校验 webhook 地址是否合法（钉钉机器人格式） */
 export function isValidDingtalkWebhook(url: string): boolean {
   return typeof url === 'string' && url.startsWith(DINGTALK_WEBHOOK_PREFIX) && url.length > DINGTALK_WEBHOOK_PREFIX.length;
@@ -35,14 +38,14 @@ export async function sendDingtalkMarkdown(
   }
 }
 
-/** 生成今日课表 Markdown 文本 */
+/** 生成今日课表 Markdown 文本（含钉钉关键词） */
 export function buildTodayScheduleMarkdown(
   items: { name: string; emoji: string; startTime: string; endTime: string; location: string | null; appName: string | null }[]
 ): string {
   if (items.length === 0) {
-    return '#### 📅 今日课表\n\n今天没有课程，好好休息！';
+    return `#### 📅 今日课表 · ${KEYWORD}\n\n今天没有课程，好好休息！`;
   }
-  const lines = ['#### 📅 今日课表', ''];
+  const lines = [`#### 📅 今日课表 · ${KEYWORD}`, ''];
   items.forEach((it, i) => {
     const place = it.appName ? `【${it.appName}】` : it.location ? `📍${it.location}` : '';
     lines.push(`${i + 1}. ${it.emoji} **${it.name}** ${it.startTime}-${it.endTime} ${place}`);
@@ -50,10 +53,10 @@ export function buildTodayScheduleMarkdown(
   return lines.join('\n');
 }
 
-/** 生成上课前提醒 Markdown 文本 */
+/** 生成上课前提醒 Markdown 文本（含钉钉关键词） */
 export function buildClassReminderMarkdown(
   item: { name: string; emoji: string; startTime: string; endTime: string; location: string | null; appName: string | null }
 ): string {
   const place = item.appName ? `【${item.appName}】` : item.location ? `📍${item.location}` : '';
-  return `### ⏰ 上课提醒\n\n${item.emoji} **${item.name}** 将在 ${item.startTime} 开始（${item.endTime} 结束）\n\n${place}`;
+  return `### ⏰ 上课提醒 · ${KEYWORD}\n\n${item.emoji} **${item.name}** 将在 ${item.startTime} 开始（${item.endTime} 结束）\n\n${place}`;
 }

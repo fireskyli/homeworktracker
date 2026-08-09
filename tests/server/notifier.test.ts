@@ -17,6 +17,7 @@ describe('notifier 钉钉推送', () => {
   it('buildTodayScheduleMarkdown：无课程', () => {
     const md = buildTodayScheduleMarkdown([]);
     expect(md).toContain('今天没有课程');
+    expect(md).toContain('励夏的课程');
   });
 
   it('buildTodayScheduleMarkdown：列出课程含地点', () => {
@@ -26,6 +27,7 @@ describe('notifier 钉钉推送', () => {
     expect(md).toContain('数学');
     expect(md).toContain('16:00-17:30');
     expect(md).toContain('📍少年宫3楼');
+    expect(md).toContain('励夏的课程');
   });
 
   it('buildTodayScheduleMarkdown：远程课显示 App', () => {
@@ -33,6 +35,7 @@ describe('notifier 钉钉推送', () => {
       { name: '英语', emoji: '🔤', startTime: '19:00', endTime: '20:00', location: null, appName: '腾讯会议' },
     ]);
     expect(md).toContain('【腾讯会议】');
+    expect(md).toContain('励夏的课程');
   });
 
   it('buildClassReminderMarkdown：含地点/App', () => {
@@ -42,10 +45,12 @@ describe('notifier 钉钉推送', () => {
     expect(md).toContain('体育');
     expect(md).toContain('18:00');
     expect(md).toContain('📍操场');
+    expect(md).toContain('励夏的课程');
 
     const md2 = buildClassReminderMarkdown({
       name: '编程', emoji: '💻', startTime: '19:00', endTime: '20:00', location: null, appName: '钉钉课堂',
     });
     expect(md2).toContain('【钉钉课堂】');
+    expect(md2).toContain('励夏的课程');
   });
 });
