@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { isPersistentError, PushBreaker } from '../src/server/schedule-push-guard';
+import { isPersistentError, PushBreaker } from '../../src/server/schedule-push-guard';
 
 describe('isPersistentError', () => {
   it('识别 SQLite 磁盘满错误', () => {
