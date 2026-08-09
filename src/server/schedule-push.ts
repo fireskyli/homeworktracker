@@ -14,6 +14,7 @@ import {
   isValidDingtalkWebhook,
 } from './notifier';
 import { computeDueReminders, ReminderRule } from './schedule-reminders';
+import { pushBreaker } from './schedule-push-guard';
 
 // Setting keys
 const KEY_WEBHOOK = 'dingtalk:webhook';
@@ -194,39 +195,58 @@ export async function pushClassReminders(userId = STANDALONE_USER_ID): Promise<n
   return pushed;
 }
 
+
+/**
+ * 在熔断保护下运行一个推送任务。
+ * 熔断打开时直接跳过；运行成功重置熔断，失败则记录到熔断器。
+ */
+async function runSafely(task: () => Promise<unknown> | unknown, label: string): Promise<void> {
+  // 冷却到期先自动恢复，再判断是否仍处于熔断
+  pushBreaker.maybeRecover();
+  if (pushBreaker.isOpen()) {
+    console.warn(`[Push] 熔断开启中，跳过「${label}」（剩余 ${Math.round(pushBreaker.remainingMs() / 60000)} 分钟）`);
+    return;
+  }
+  try {
+    await task();
+    pushBreaker.recordSuccess();
+  } catch (err) {
+    pushBreaker.recordFailure(err);
+    console.error(`[Push] ${label} 失败:`, err);
+  }
+}
+
 /** 启动推送调度：开机补发当日课表 + 7天总览 + 设定时器 */
 export function startSchedulePush(userId = STANDALONE_USER_ID): void {
-  // 开机补发：若今天还没推过今日课表/7天总览，立即推送
+  // 开机补发：若今天还没推过今日课表/7天总览，立即推送（受熔断保护）
   void (async () => {
     const todayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
     const lastDaily = await getSetting(KEY_LAST_DAILY, userId);
     if (lastDaily !== todayStr) {
-      const ok = await pushDailySchedule(userId);
-      if (ok) console.log('[Push] 开机补发今日课表成功');
+      await runSafely(() => pushDailySchedule(userId), '开机补发今日课表');
     }
     const lastWeekly = await getSetting(KEY_LAST_WEEKLY, userId);
     if (lastWeekly !== todayStr) {
-      const ok = await pushWeeklySchedule(userId);
-      if (ok) console.log('[Push] 开机补发7天总览成功');
+      await runSafely(() => pushWeeklySchedule(userId), '开机补发7天总览');
     }
   })();
 
   // 定时器：每分钟检查一次（上课前1小时提醒窗口按分钟粒度）
   const minuteTimer = setInterval(() => {
-    void pushClassReminders(userId).catch(err => console.error('[Push] 上课提醒失败:', err));
+    void runSafely(() => pushClassReminders(userId), '上课提醒');
   }, 60 * 1000);
 
   // 每天定时推送今日课表 + 7天总览（每日检查是否到推送时间且未推送）
   const dailyTimer = setInterval(() => {
     const now = new Date();
     if (now.getHours() === DAILY_PUSH_TIME.hour && now.getMinutes() === DAILY_PUSH_TIME.minute) {
-      void pushDailySchedule(userId).catch(err => console.error('[Push] 今日课表推送失败:', err));
-      void pushWeeklySchedule(userId).catch(err => console.error('[Push] 7天总览推送失败:', err));
+      void runSafely(() => pushDailySchedule(userId), '今日课表推送');
+      void runSafely(() => pushWeeklySchedule(userId), '7天总览推送');
     }
   }, 60 * 1000);
 
   // 防止定时器阻止进程退出
   minuteTimer.unref?.();
   dailyTimer.unref?.();
-  console.log(`[Push] 课程推送调度已启动（开机补发 + 每日 ${DAILY_PUSH_TIME.hour}:${String(DAILY_PUSH_TIME.minute).padStart(2, '0')} + 上课前${CLASS_REMIND_MIN}分钟）`);
+  console.log(`[Push] 课程推送调度已启动（开机补发 + 每日 ${DAILY_PUSH_TIME.hour}:${String(DAILY_PUSH_TIME.minute).padStart(2, '0')} + 上课前${CLASS_REMIND_MIN}分钟 + 熔断保护）`);
 }
