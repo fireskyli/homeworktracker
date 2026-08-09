@@ -3,6 +3,7 @@ import {
   isValidDingtalkWebhook,
   buildTodayScheduleMarkdown,
   buildClassReminderMarkdown,
+  buildWeeklyScheduleMarkdown,
 } from '../../src/server/notifier';
 
 describe('notifier 钉钉推送', () => {
@@ -52,5 +53,30 @@ describe('notifier 钉钉推送', () => {
     });
     expect(md2).toContain('【钉钉课堂】');
     expect(md2).toContain('励夏的课程');
+  });
+
+  it('buildWeeklyScheduleMarkdown：含关键词和日期', () => {
+    const start = new Date('2026-08-11T00:00:00'); // 周一
+    const md = buildWeeklyScheduleMarkdown(
+      [
+        { name: '数学', emoji: '📖', startTime: '16:00', endTime: '17:30', location: '少年宫3楼', appName: null, repeatType: 'weekly', repeatDays: '[1,3]', date: null },
+      ],
+      start,
+      7
+    );
+    expect(md).toContain('励夏的课程');
+    expect(md).toContain('未来7天课程总览');
+    expect(md).toContain('数学');
+    expect(md).toContain('16:00-17:30');
+    expect(md).toContain('📍少年宫3楼');
+    expect(md).toContain('周一');
+    expect(md).toContain('周三');
+  });
+
+  it('buildWeeklyScheduleMarkdown：无课程', () => {
+    const start = new Date('2026-08-11T00:00:00');
+    const md = buildWeeklyScheduleMarkdown([], start, 7);
+    expect(md).toContain('励夏的课程');
+    expect(md).toContain('无课程');
   });
 });

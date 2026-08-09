@@ -128,3 +128,14 @@ export async function manualPushToday(): Promise<string> {
   const data = await res.json();
   return data.message || '推送成功';
 }
+
+/** 手动推送未来7天总览（强制推送，忽略去重） */
+export async function manualPushWeekly(): Promise<string> {
+  const res = await apiFetch('/api/schedule-push-config/weekly', { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: '推送失败' }));
+    throw new Error(err.error || '推送失败');
+  }
+  const data = await res.json();
+  return data.message || '推送成功';
+}

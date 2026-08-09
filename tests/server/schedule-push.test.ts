@@ -89,4 +89,29 @@ describe('课程推送', () => {
     const res = await request(app).post('/api/schedule-push-config/today');
     expect(res.status).toBe(400);
   });
+
+  it('手动推送7天总览：有课程时成功', async () => {
+    // 保存配置
+    await request(app)
+      .put('/api/schedule-push-config')
+      .send({ webhook: 'https://oapi.dingtalk.com/robot/send?access_token=api1', enabled: true });
+    // 创建每周一的课
+    await request(app)
+      .post('/api/schedules')
+      .send({ name: '测试课', startTime: '10:00', endTime: '11:00', repeatType: 'weekly', repeatDays: [1, 3] });
+
+    const res = await request(app).post('/api/schedule-push-config/weekly');
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+  });
+
+  it('手动推送7天总览：未开启时返回 400', async () => {
+    // 保存关闭的配置
+    await request(app)
+      .put('/api/schedule-push-config')
+      .send({ webhook: 'https://oapi.dingtalk.com/robot/send?access_token=api1', enabled: false });
+
+    const res = await request(app).post('/api/schedule-push-config/weekly');
+    expect(res.status).toBe(400);
+  });
 });

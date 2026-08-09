@@ -10,6 +10,7 @@ import {
   sendDingtalkMarkdown,
   buildTodayScheduleMarkdown,
   buildClassReminderMarkdown,
+  buildWeeklyScheduleMarkdown,
   isValidDingtalkWebhook,
 } from './notifier';
 import { computeDueReminders, ReminderRule } from './schedule-reminders';
@@ -18,6 +19,7 @@ import { computeDueReminders, ReminderRule } from './schedule-reminders';
 const KEY_WEBHOOK = 'dingtalk:webhook';
 const KEY_ENABLED = 'dingtalk:enabled';
 const KEY_LAST_DAILY = 'dingtalk:lastDaily';   // 上次推送今日课表的日期 YYYY-MM-DD
+const KEY_LAST_WEEKLY = 'dingtalk:lastWeekly'; // 上次推送7天总览的日期 YYYY-MM-DD
 const KEY_LAST_CLASS = 'dingtalk:lastClass';   // 上次上课提醒的标识（由调用方生成）
 
 const DAILY_PUSH_TIME = { hour: 7, minute: 0 }; // 每天 07:00 推送今日课表
@@ -123,6 +125,26 @@ export async function pushDailySchedule(userId = STANDALONE_USER_ID): Promise<bo
   return res.ok;
 }
 
+/** 推送未来7天课程总览。返回是否推送成功。 */
+export async function pushWeeklySchedule(userId = STANDALONE_USER_ID): Promise<boolean> {
+  const config = await getPushConfig(userId);
+  if (!config.enabled || !config.webhook) return false;
+
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+  const entries = await prisma.scheduleEntry.findMany({
+    where: { isActive: 1, userId },
+  });
+
+  const md = buildWeeklyScheduleMarkdown(entries, now, 7);
+  const res = await sendDingtalkMarkdown(config.webhook, '📅 未来7天课程总览', md);
+  if (res.ok) {
+    await setSetting(KEY_LAST_WEEKLY, todayStr, userId);
+  }
+  return res.ok;
+}
+
 /** 推送上课前 1 小时提醒。返回推送的提醒数量。 */
 export async function pushClassReminders(userId = STANDALONE_USER_ID): Promise<number> {
   const config = await getPushConfig(userId);
@@ -172,15 +194,20 @@ export async function pushClassReminders(userId = STANDALONE_USER_ID): Promise<n
   return pushed;
 }
 
-/** 启动推送调度：开机补发当日课表 + 设定时器 */
+/** 启动推送调度：开机补发当日课表 + 7天总览 + 设定时器 */
 export function startSchedulePush(userId = STANDALONE_USER_ID): void {
-  // 开机补发：若今天还没推过今日课表，立即推送
+  // 开机补发：若今天还没推过今日课表/7天总览，立即推送
   void (async () => {
     const todayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
     const lastDaily = await getSetting(KEY_LAST_DAILY, userId);
     if (lastDaily !== todayStr) {
       const ok = await pushDailySchedule(userId);
       if (ok) console.log('[Push] 开机补发今日课表成功');
+    }
+    const lastWeekly = await getSetting(KEY_LAST_WEEKLY, userId);
+    if (lastWeekly !== todayStr) {
+      const ok = await pushWeeklySchedule(userId);
+      if (ok) console.log('[Push] 开机补发7天总览成功');
     }
   })();
 
@@ -189,11 +216,12 @@ export function startSchedulePush(userId = STANDALONE_USER_ID): void {
     void pushClassReminders(userId).catch(err => console.error('[Push] 上课提醒失败:', err));
   }, 60 * 1000);
 
-  // 每天定时推送今日课表（每日检查是否到推送时间且未推送）
+  // 每天定时推送今日课表 + 7天总览（每日检查是否到推送时间且未推送）
   const dailyTimer = setInterval(() => {
     const now = new Date();
     if (now.getHours() === DAILY_PUSH_TIME.hour && now.getMinutes() === DAILY_PUSH_TIME.minute) {
       void pushDailySchedule(userId).catch(err => console.error('[Push] 今日课表推送失败:', err));
+      void pushWeeklySchedule(userId).catch(err => console.error('[Push] 7天总览推送失败:', err));
     }
   }, 60 * 1000);
 

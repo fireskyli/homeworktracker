@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../App';
 import { fetchBackups, createBackup, restoreBackup, importBackup } from '../hooks/useBackups';
-import { fetchPushConfig, savePushConfig, testPush, PushConfig, manualPushToday } from '../hooks/useSchedules';
+import { fetchPushConfig, savePushConfig, testPush, PushConfig, manualPushToday, manualPushWeekly } from '../hooks/useSchedules';
 import { formatVersion } from '../version';
 
 export default function SettingsPage() {
@@ -19,6 +19,7 @@ export default function SettingsPage() {
   const [pushLoading, setPushLoading] = useState(false);
   const [testingPush, setTestingPush] = useState(false);
   const [manualPushing, setManualPushing] = useState(false);
+  const [weeklyPushing, setWeeklyPushing] = useState(false);
   const [parentPw, setParentPw] = useState('');
   const [parentPwError, setParentPwError] = useState('');
   const [showParentGate, setShowParentGate] = useState(false);
@@ -87,6 +88,20 @@ export default function SettingsPage() {
       setPushMsg(`❌ ${(err as Error).message}`);
     } finally {
       setManualPushing(false);
+    }
+    setTimeout(() => setPushMsg(''), 4000);
+  }
+
+  async function handleWeeklyPush() {
+    setWeeklyPushing(true);
+    setPushMsg('');
+    try {
+      const msg = await manualPushWeekly();
+      setPushMsg(`✅ ${msg}`);
+    } catch (err) {
+      setPushMsg(`❌ ${(err as Error).message}`);
+    } finally {
+      setWeeklyPushing(false);
     }
     setTimeout(() => setPushMsg(''), 4000);
   }
@@ -386,7 +401,7 @@ export default function SettingsPage() {
               />
             </button>
           </label>
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-2">
             <button
               onClick={handleSavePush}
               disabled={pushLoading}
@@ -395,18 +410,27 @@ export default function SettingsPage() {
               {pushLoading ? '保存中...' : '保存配置'}
             </button>
             <button
-              onClick={handleManualPush}
-              disabled={manualPushing}
-              className="flex-1 py-2 bg-purple-500 text-white rounded-lg text-sm font-medium disabled:opacity-50"
-            >
-              {manualPushing ? '推送中...' : '📨 立即推送'}
-            </button>
-            <button
               onClick={handleTestPush}
               disabled={testingPush}
               className="flex-1 py-2 bg-green-500 text-white rounded-lg text-sm font-medium disabled:opacity-50"
             >
               {testingPush ? '发送中...' : '测试推送'}
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleManualPush}
+              disabled={manualPushing}
+              className="flex-1 py-2 bg-purple-500 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+            >
+              {manualPushing ? '推送中...' : '📨 今日课表'}
+            </button>
+            <button
+              onClick={handleWeeklyPush}
+              disabled={weeklyPushing}
+              className="flex-1 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+            >
+              {weeklyPushing ? '推送中...' : '📅 推送7天'}
             </button>
           </div>
           {pushMsg && (

@@ -53,6 +53,53 @@ export function buildTodayScheduleMarkdown(
   return lines.join('\n');
 }
 
+const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+/** 生成未来 N 天课程总览 Markdown 文本（含钉钉关键词） */
+export function buildWeeklyScheduleMarkdown(
+  entries: { name: string; emoji: string; startTime: string; endTime: string; location: string | null; appName: string | null; repeatType: string; repeatDays: string; date: string | null }[],
+  startDate: Date,
+  days = 7
+): string {
+  const lines = [`#### 📅 未来${days}天课程总览 · ${KEYWORD}`, ''];
+
+  for (let i = 0; i < days; i++) {
+    const d = new Date(startDate);
+    d.setDate(d.getDate() + i);
+    const year = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const da = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${mo}-${da}`;
+    const weekday = WEEKDAYS[d.getDay()];
+
+    // 找出当天课程
+    const dayItems = entries.filter(e => {
+      const dd = new Date(dateStr + 'T00:00:00');
+      if (e.repeatType === 'weekly') {
+        try { return JSON.parse(e.repeatDays).includes(dd.getDay()); } catch { return false; }
+      }
+      return e.date === dateStr;
+    }).map(e => ({
+      name: e.name, emoji: e.emoji, startTime: e.startTime, endTime: e.endTime,
+      location: e.location, appName: e.appName,
+    }));
+
+    if (i > 0) lines.push('---');
+    lines.push(`**${weekday} ${mo}/${da}**`);
+
+    if (dayItems.length === 0) {
+      lines.push('（无课程）');
+    } else {
+      dayItems.forEach(it => {
+        const place = it.appName ? `【${it.appName}】` : it.location ? `📍${it.location}` : '';
+        lines.push(`${it.emoji} **${it.name}** ${it.startTime}-${it.endTime} ${place}`);
+      });
+    }
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
 /** 生成上课前提醒 Markdown 文本（含钉钉关键词） */
 export function buildClassReminderMarkdown(
   item: { name: string; emoji: string; startTime: string; endTime: string; location: string | null; appName: string | null }
