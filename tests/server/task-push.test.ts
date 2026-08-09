@@ -57,12 +57,25 @@ describe('学习任务 Markdown 构建', () => {
         { name: '口算', subject: '数学', emoji: '🔢', quality: 3, pointsEarned: 3 },
         { name: '阅读', subject: '语文', emoji: '📖', quality: 3, pointsEarned: 3 },
       ],
+      undoneItems: [{ name: '练字', subject: '语文', emoji: '✍️', estimatedMin: 15 }],
+      exerciseSummary: {
+        total: 2,
+        suns: 5,
+        byType: [{ name: '跳绳', emoji: '🪢', count: 2, suns: 5 }],
+      },
     });
     expect(md).toContain('励夏的课程');
     expect(md).toContain('共 3 项，完成 2 项（67%）');
     expect(md).toContain('获得积分：**6**');
     expect(md).toContain('口算');
     expect(md).toContain('⭐⭐⭐');
+    expect(md).toContain('未完成');
+    expect(md).toContain('练字');
+    expect(md).toContain('约 15 分钟');
+    expect(md).toContain('今日运动');
+    expect(md).toContain('🪢');
+    expect(md).toContain('跳绳 2次 ☀️5');
+    expect(md).toContain('共 2 次，获得 5 ☀️');
   });
 
   it('buildWeeklySummaryMarkdown：含周统计与科目分布', () => {
@@ -87,7 +100,11 @@ describe('学习任务 Markdown 构建', () => {
 
 describe('学习任务统计函数', () => {
   beforeAll(resetDb);
-  beforeEach(resetDb);
+  beforeEach(async () => {
+    await resetDb();
+    // 初始化家长密码
+    await request(app).post('/api/settings/verify').send({ password: '1234' });
+  });
 
   it('getTodayTasks：每日任务和当天一次性任务返回', async () => {
     // 创建每日任务
@@ -123,6 +140,56 @@ describe('学习任务统计函数', () => {
     expect(stats.pointsEarned).toBe(3);
     expect(stats.items[0].name).toBe('口算');
     expect(stats.items[0].pointsEarned).toBe(3);
+  });
+
+  it('getDailyStats：包含未完成列表和运动数据', async () => {
+    // 创建任务（积分上限 3）
+    const task = await request(app).post('/api/tasks').send({
+      name: '口算', subject: '数学', emoji: '🔢', repeatType: 'daily', points: 3,
+    });
+    const taskId = task.body.id;
+    const today = new Date().toISOString().split('T')[0];
+
+    // 运动类型（需要家长密码）
+    const exType = await request(app).post('/api/exercise-types').send({
+      name: '跳绳', emoji: '🪢', unit: '次', password: '1234',
+    });
+    expect(exType.status).toBe(201);
+    const exTypeId = exType.body.id;
+
+    // 运动记录
+    const exRes = await request(app).post('/api/exercises').send({
+      exerciseTypeId: exTypeId, date: today, quality: 3,
+    });
+    expect(exRes.status).toBe(201);
+
+    // 打卡口算 → 完成
+    await request(app).post('/api/checkins').send({ taskId, date: today, quality: 3 });
+
+    const stats = await getDailyStats(today, 0);
+    expect(stats.undoneItems).toHaveLength(0); // 全部完成
+    expect(stats.exerciseSummary.total).toBe(1);
+    expect(stats.exerciseSummary.suns).toBe(3);
+    expect(stats.exerciseSummary.byType[0].name).toBe('跳绳');
+  });
+
+  it('getDailyStats：未完成列表包含未打卡任务', async () => {
+    // 创建两个任务，只完成一个
+    const task1 = await request(app).post('/api/tasks').send({
+      name: '口算', subject: '数学', emoji: '🔢', repeatType: 'daily', points: 3,
+    });
+    await request(app).post('/api/tasks').send({
+      name: '阅读', subject: '语文', emoji: '📖', repeatType: 'daily', points: 2,
+    });
+    const today = new Date().toISOString().split('T')[0];
+
+    // 只打卡口算
+    await request(app).post('/api/checkins').send({ taskId: task1.body.id, date: today, quality: 3 });
+
+    const stats = await getDailyStats(today, 0);
+    expect(stats.done).toBe(1);
+    expect(stats.undoneItems.length).toBeGreaterThanOrEqual(1);
+    expect(stats.undoneItems.some(i => i.name === '阅读')).toBe(true);
   });
 
   it('getDailyStats：total 只统计今日应做任务（与今日任务推送同口径）', async () => {

@@ -80,6 +80,7 @@ export async function getTodayTasks(userId: number, dateStr?: string): Promise<T
 
 /**
  * 计算某用户某天的任务完成总结（复用 stats /weekly 的积分口径）。
+ * 包含已完成任务、未完成任务、今日运动数据。
  */
 export async function getDailyStats(date: string, userId: number): Promise<{
   date: string;
@@ -88,6 +89,12 @@ export async function getDailyStats(date: string, userId: number): Promise<{
   rate: number;
   pointsEarned: number;
   items: SummaryItem[];
+  undoneItems: TodayTaskItem[];
+  exerciseSummary: {
+    total: number;
+    suns: number;
+    byType: { name: string; emoji: string; count: number; suns: number }[];
+  };
 }> {
   // 「今日应做任务」与今日任务推送同口径（复用 getTodayTasks 的重复规则筛选，按 date 驱动）
   const todayTasks = await getTodayTasks(userId, date);
@@ -119,9 +126,32 @@ export async function getDailyStats(date: string, userId: number): Promise<{
     });
   }
 
+  // 未完成 = 今日应做但未打卡
+  const doneTaskIds = new Set(checkins.filter(c => todayTaskIds.has(c.taskId)).map(c => c.taskId));
+  const undoneItems = todayTasks.filter(t => !doneTaskIds.has(t.id));
+
+  // 今日运动统计
+  const exercises = await prisma.exercise.findMany({
+    where: { date, userId },
+    include: { exerciseType: { select: { name: true, emoji: true } } },
+  });
+  let exerciseSuns = 0;
+  const exByType: Record<string, { name: string; emoji: string; count: number; suns: number }> = {};
+  for (const e of exercises) {
+    const key = String(e.exerciseTypeId);
+    if (!exByType[key]) exByType[key] = { name: e.exerciseType.name, emoji: e.exerciseType.emoji, count: 0, suns: 0 };
+    exByType[key].count++;
+    exByType[key].suns += e.quality || 0;
+    exerciseSuns += e.quality || 0;
+  }
+
   const doneCount = items.length;
   const rate = tasks.length > 0 ? Math.round((doneCount / tasks.length) * 100) : 0;
-  return { date, total: tasks.length, done: doneCount, rate, pointsEarned, items };
+  return {
+    date, total: tasks.length, done: doneCount, rate, pointsEarned, items,
+    undoneItems,
+    exerciseSummary: { total: exercises.length, suns: exerciseSuns, byType: Object.values(exByType) },
+  };
 }
 
 /**

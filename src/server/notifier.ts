@@ -141,6 +141,12 @@ export function buildDailySummaryMarkdown(data: {
   rate: number;
   pointsEarned: number;
   items: SummaryItem[];
+  undoneItems: { name: string; subject: string; emoji: string; estimatedMin: number }[];
+  exerciseSummary: {
+    total: number;
+    suns: number;
+    byType: { name: string; emoji: string; count: number; suns: number }[];
+  };
 }): string {
   const lines = ['#### ✅ 今日任务完成总结 · ' + KEYWORD, ''];
   lines.push('**' + data.date + '** 共 ' + data.total + ' 项，完成 ' + data.done + ' 项（' + data.rate + '%）');
@@ -154,6 +160,26 @@ export function buildDailySummaryMarkdown(data: {
       lines.push('- ' + it.emoji + ' ' + it.name + '（' + it.subject + '）' + stars + ' +' + it.pointsEarned + '分');
     });
   }
+
+  // 未完成任务
+  if (data.undoneItems.length > 0) {
+    lines.push('', '**未完成：**');
+    data.undoneItems.forEach(it => {
+      const min = it.estimatedMin > 0 ? '（约 ' + it.estimatedMin + ' 分钟）' : '';
+      lines.push('- ' + it.emoji + ' ' + it.name + '（' + it.subject + '）' + min);
+    });
+  }
+
+  // 今日运动
+  if (data.exerciseSummary.total > 0) {
+    lines.push('', '**今日运动：**');
+    data.exerciseSummary.byType.forEach(t => {
+      lines.push(t.emoji + ' ' + t.name + ' ' + t.count + '次 ☀️' + t.suns);
+    });
+    lines.push('共 ' + data.exerciseSummary.total + ' 次，获得 ' + data.exerciseSummary.suns + ' ☀️');
+  }
+
+  lines.push('', '继续坚持，明天更棒！💪');
   return lines.join('\n');
 }
 
