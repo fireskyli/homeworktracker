@@ -27,7 +27,7 @@
 
 ![家长管理](./screen/5.png)
 
-![课程表](./screen/schedule.png)
+> 课程表月历视图、钉钉推送配置等更多功能请查看下方说明。
 
 ## 技术栈
 
@@ -300,36 +300,37 @@ homeworkertacker/
 │   └── homework.db        # SQLite 数据库
 ├── src/
 │   ├── server/            # 后端
-│   │   ├── index.ts       # 入口
-│   │   ├── app.ts         # Express 配置
-│   │   ├── db.ts          # Prisma 连接
+│   │   ├── index.ts       # 入口（启动定时推送/备份）
+│   │   ├── app.ts         # Express 配置 + 路由注册
+│   │   ├── db.ts          # Prisma 连接 + 哨兵用户初始化
+│   │   ├── config.ts      # 部署模式等配置
 │   │   ├── backup.ts      # 自动备份模块
-│   │   ├── schedule-reminders.ts  # 提醒算法（纯函数）
-│   │   ├── notifier.ts    # 钉钉推送消息生成
-│   │   ├── schedule-push.ts  # 推送调度和定时
+│   │   ├── notifier.ts    # 钉钉推送消息生成（课程/任务）
+│   │   ├── schedule-reminders.ts  # 课程提醒算法（纯函数）
+│   │   ├── schedule-push.ts  # 课程推送调度和定时
+│   │   ├── schedule-push-guard.ts # 推送熔断保护
+│   │   ├── task-push.ts   # 学习任务推送（今日任务/日总结/周总结）
+│   │   ├── middleware/    # 认证中间件（JWT / 单机哨兵）
 │   │   └── routes/        # API 路由
-│   │       ├── tasks.ts
-│   │       ├── checkins.ts
-│   │       ├── exercises.ts
-│   │       ├── schedules.ts  # 课程表 CRUD + 提醒
-│   │       └── schedule-push-config.ts  # 推送配置 + 手动推送
+│   │       ├── tasks.ts / checkins.ts / stats.ts
+│   │       ├── exercises.ts / exercise-types.ts / exercise-stats.ts
+│   │       ├── redemptions.ts / products.ts
+│   │       ├── schedules.ts / schedule-attendance.ts
+│   │       ├── schedule-push-config.ts  # 推送配置 + 手动推送
+│   │       ├── settings.ts / auth.ts
+│   │       ├── backup.ts / upload.ts
 │   └── client/            # 前端
-│       ├── App.tsx        # 根组件
-│       ├── components/    # 组件
-│   │       ├── NavBar.tsx
-│   │       └── ScheduleForm.tsx  # 课程表弹窗
-│       ├── pages/         # 页面
-│       │   ├── HomePage.tsx
-│       │   ├── ExercisePage.tsx
-│       │   ├── SchedulePage.tsx  # 课程表日历视图
-│       │   └── ...
-│       ├── hooks/         # 数据 hooks
-│       │   ├── useSchedules.ts
-│       │   ├── useScheduleReminders.ts
-│       │   └── ...
-│       └── types/         # 类型定义
+│       ├── App.tsx        # 根组件 + 路由
+│       ├── components/    # 通用组件（NavBar / TaskForm / ScheduleForm 等）
+│       ├── pages/         # 页面（Home / Tasks / Stats / Schedule 等）
+│       ├── hooks/         # 数据 hooks（useTasks / useSchedules 等）
+│       ├── types/         # 类型定义
+│       ├── utils/         # 工具函数
+│       └── version.ts     # 版本号
 ├── uploads/               # 作业照片存储
 ├── backups/               # 数据库自动备份（本地保留，不提交 Git）
+├── docs/                  # 部署手册 / 架构文档 / 推广文章
+├── scripts/               # 数据迁移 / 初始化脚本
 ├── package.json
 ├── vite.config.ts
 ├── tailwind.config.js
@@ -342,7 +343,7 @@ homeworkertacker/
 
 ## 测试
 
-服务端核心逻辑使用 [Vitest](https://vitest.dev) + supertest 做真实 SQLite 集成测试（每个测试文件独立临时数据库）：
+服务端核心逻辑使用 [Vitest](https://vitest.dev) + supertest 做真实 SQLite 集成测试（每个测试文件独立临时数据库）。目前 **191 个测试用例**全部通过：
 
 ```bash
 npm test              # 运行全部测试
