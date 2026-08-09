@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getPushConfig, savePushConfig } from '../schedule-push';
+import { getPushConfig, savePushConfig, pushDailySchedule } from '../schedule-push';
 import { sendDingtalkMarkdown, isValidDingtalkWebhook } from '../notifier';
 
 export const pushConfigRouter = Router();
@@ -22,6 +22,20 @@ pushConfigRouter.put('/', async (req, res) => {
     res.json(config);
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+// 手动推送今日课表（强制推送，忽略去重）
+pushConfigRouter.post('/today', async (req, res) => {
+  try {
+    const ok = await pushDailySchedule(req.userId);
+    if (ok) return res.json({ ok: true, message: '今日课表已推送' });
+    const config = await getPushConfig(req.userId);
+    if (!config.enabled) return res.status(400).json({ error: '推送未开启' });
+    if (!config.webhook) return res.status(400).json({ error: 'webhook 未配置' });
+    return res.status(500).json({ error: '推送失败' });
+  } catch (err) {
+    res.status(500).json({ error: `推送失败: ${(err as Error).message}` });
   }
 });
 

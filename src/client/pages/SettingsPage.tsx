@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../App';
 import { fetchBackups, createBackup, restoreBackup, importBackup } from '../hooks/useBackups';
-import { fetchPushConfig, savePushConfig, testPush, PushConfig } from '../hooks/useSchedules';
+import { fetchPushConfig, savePushConfig, testPush, PushConfig, manualPushToday } from '../hooks/useSchedules';
 import { formatVersion } from '../version';
 
 export default function SettingsPage() {
@@ -18,6 +18,7 @@ export default function SettingsPage() {
   const [pushMsg, setPushMsg] = useState('');
   const [pushLoading, setPushLoading] = useState(false);
   const [testingPush, setTestingPush] = useState(false);
+  const [manualPushing, setManualPushing] = useState(false);
   const [parentPw, setParentPw] = useState('');
   const [parentPwError, setParentPwError] = useState('');
   const [showParentGate, setShowParentGate] = useState(false);
@@ -72,6 +73,20 @@ export default function SettingsPage() {
       setPushMsg(`❌ ${(err as Error).message}`);
     } finally {
       setTestingPush(false);
+    }
+    setTimeout(() => setPushMsg(''), 4000);
+  }
+
+  async function handleManualPush() {
+    setManualPushing(true);
+    setPushMsg('');
+    try {
+      const msg = await manualPushToday();
+      setPushMsg(`✅ ${msg}`);
+    } catch (err) {
+      setPushMsg(`❌ ${(err as Error).message}`);
+    } finally {
+      setManualPushing(false);
     }
     setTimeout(() => setPushMsg(''), 4000);
   }
@@ -378,6 +393,13 @@ export default function SettingsPage() {
               className="flex-1 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium disabled:opacity-50"
             >
               {pushLoading ? '保存中...' : '保存配置'}
+            </button>
+            <button
+              onClick={handleManualPush}
+              disabled={manualPushing}
+              className="flex-1 py-2 bg-purple-500 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+            >
+              {manualPushing ? '推送中...' : '📨 立即推送'}
             </button>
             <button
               onClick={handleTestPush}

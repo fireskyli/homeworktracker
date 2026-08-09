@@ -117,3 +117,14 @@ export async function testPush(webhook: string): Promise<boolean> {
   }
   return true;
 }
+
+/** 手动推送今日课表（强制推送，忽略去重） */
+export async function manualPushToday(): Promise<string> {
+  const res = await apiFetch('/api/schedule-push-config/today', { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: '推送失败' }));
+    throw new Error(err.error || '推送失败');
+  }
+  const data = await res.json();
+  return data.message || '推送成功';
+}
