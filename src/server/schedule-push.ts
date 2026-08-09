@@ -5,6 +5,7 @@
 
 import { prisma } from './db';
 import { STANDALONE_USER_ID } from './config';
+import { initSentinelUser } from './db';
 import {
   sendDingtalkMarkdown,
   buildTodayScheduleMarkdown,
@@ -46,6 +47,10 @@ export async function savePushConfig(
 ): Promise<PushConfig> {
   if (config.enabled && !isValidDingtalkWebhook(config.webhook)) {
     throw new Error('开启推送需填写有效的钉钉机器人 webhook 地址');
+  }
+  // 确保哨兵用户存在（单机模式 userId=0），避免外键约束失败
+  if (userId === STANDALONE_USER_ID) {
+    await initSentinelUser();
   }
   await prisma.setting.upsert({
     where: { key: KEY_WEBHOOK, userId },
