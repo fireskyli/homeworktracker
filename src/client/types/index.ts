@@ -188,6 +188,7 @@ export interface ScheduleEntry {
   startTime: string; // HH:mm
   endTime: string; // HH:mm
   location: string | null;
+  appName: string | null; // 远程课的上课 App
   remindDayBefore: number;
   remindMinBefore: number;
   isActive: number;

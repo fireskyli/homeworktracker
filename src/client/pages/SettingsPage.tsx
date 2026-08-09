@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../App';
 import { fetchBackups, createBackup, restoreBackup, importBackup } from '../hooks/useBackups';
+import { fetchPushConfig, savePushConfig, testPush, PushConfig } from '../hooks/useSchedules';
 import { formatVersion } from '../version';
 
 export default function SettingsPage() {
@@ -13,6 +14,43 @@ export default function SettingsPage() {
   const [showBackups, setShowBackups] = useState(false);
   const [restoring, setRestoring] = useState('');
   const [importing, setImporting] = useState(false);
+  const [pushConfig, setPushConfig] = useState<PushConfig>({ webhook: '', enabled: false });
+  const [pushMsg, setPushMsg] = useState('');
+  const [pushLoading, setPushLoading] = useState(false);
+  const [testingPush, setTestingPush] = useState(false);
+
+  // 加载推送配置
+  useEffect(() => {
+    fetchPushConfig().then(cfg => setPushConfig(cfg)).catch(() => {});
+  }, []);
+
+  async function handleSavePush() {
+    setPushLoading(true);
+    setPushMsg('');
+    try {
+      await savePushConfig(pushConfig);
+      setPushMsg('✅ 推送配置已保存');
+    } catch (err) {
+      setPushMsg(`❌ ${(err as Error).message}`);
+    } finally {
+      setPushLoading(false);
+    }
+    setTimeout(() => setPushMsg(''), 3000);
+  }
+
+  async function handleTestPush() {
+    setTestingPush(true);
+    setPushMsg('');
+    try {
+      await testPush(pushConfig.webhook);
+      setPushMsg('✅ 测试推送成功，请查看钉钉群');
+    } catch (err) {
+      setPushMsg(`❌ ${(err as Error).message}`);
+    } finally {
+      setTestingPush(false);
+    }
+    setTimeout(() => setPushMsg(''), 4000);
+  }
 
   async function handleChangePassword() {
     try {
@@ -244,6 +282,58 @@ export default function SettingsPage() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* 课程推送配置 */}
+      {isParentMode && (
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-4">
+          <h3 className="font-medium text-base mb-1">🔔 课程推送（钉钉）</h3>
+          <p className="text-sm text-gray-400 mb-3">
+            每天推送今日课表 + 上课前 1 小时提醒到钉钉群
+          </p>
+          <input
+            type="text"
+            value={pushConfig.webhook}
+            onChange={e => setPushConfig({ ...pushConfig, webhook: e.target.value })}
+            placeholder="钉钉群机器人 webhook 地址"
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <label className="flex items-center justify-between py-2 mb-2">
+            <span className="text-sm text-gray-600">开启课程推送</span>
+            <button
+              onClick={() => setPushConfig({ ...pushConfig, enabled: !pushConfig.enabled })}
+              className={`w-12 h-7 rounded-full transition-colors ${pushConfig.enabled ? 'bg-blue-500' : 'bg-gray-300'}`}
+            >
+              <div
+                className={`w-5 h-5 bg-white rounded-full shadow transition-transform mx-1 ${pushConfig.enabled ? 'translate-x-5' : 'translate-x-0'}`}
+              />
+            </button>
+          </label>
+          <div className="flex gap-2">
+            <button
+              onClick={handleSavePush}
+              disabled={pushLoading}
+              className="flex-1 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+            >
+              {pushLoading ? '保存中...' : '保存配置'}
+            </button>
+            <button
+              onClick={handleTestPush}
+              disabled={testingPush}
+              className="flex-1 py-2 bg-green-500 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+            >
+              {testingPush ? '发送中...' : '测试推送'}
+            </button>
+          </div>
+          {pushMsg && (
+            <p className={`text-sm mt-2 ${pushMsg.includes('✅') ? 'text-green-500' : 'text-red-500'}`}>
+              {pushMsg}
+            </p>
+          )}
+          <p className="text-xs text-gray-400 mt-3">
+            如何获取 webhook：钉钉群 → 群设置 → 智能群助手 → 添加机器人 → 自定义 → 复制 webhook 地址
+          </p>
         </div>
       )}
 

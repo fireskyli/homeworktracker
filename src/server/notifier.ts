@@ -1,0 +1,59 @@
+// ── 钉钉群机器人推送服务 ──────────────────────────
+// 使用钉钉「自定义机器人」webhook 发送消息。
+// webhook 格式: https://oapi.dingtalk.com/robot/send?access_token=xxx
+
+const DINGTALK_WEBHOOK_PREFIX = 'https://oapi.dingtalk.com/robot/send?access_token=';
+
+/** 校验 webhook 地址是否合法（钉钉机器人格式） */
+export function isValidDingtalkWebhook(url: string): boolean {
+  return typeof url === 'string' && url.startsWith(DINGTALK_WEBHOOK_PREFIX) && url.length > DINGTALK_WEBHOOK_PREFIX.length;
+}
+
+/** 发送钉钉 Markdown 消息。返回成功与否。 */
+export async function sendDingtalkMarkdown(
+  webhook: string,
+  title: string,
+  markdown: string
+): Promise<{ ok: boolean; error?: string }> {
+  if (!isValidDingtalkWebhook(webhook)) {
+    return { ok: false, error: '无效的钉钉 webhook 地址' };
+  }
+  try {
+    const res = await fetch(webhook, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        msgtype: 'markdown',
+        markdown: { title, text: markdown },
+      }),
+    });
+    const data = await res.json().catch(() => ({ errcode: -1, errmsg: '无法解析响应' })) as { errcode: number; errmsg?: string };
+    if (data.errcode === 0) return { ok: true };
+    return { ok: false, error: data.errmsg || `钉钉返回错误 ${data.errcode}` };
+  } catch (err) {
+    return { ok: false, error: `网络错误: ${(err as Error).message}` };
+  }
+}
+
+/** 生成今日课表 Markdown 文本 */
+export function buildTodayScheduleMarkdown(
+  items: { name: string; emoji: string; startTime: string; endTime: string; location: string | null; appName: string | null }[]
+): string {
+  if (items.length === 0) {
+    return '#### 📅 今日课表\n\n今天没有课程，好好休息！';
+  }
+  const lines = ['#### 📅 今日课表', ''];
+  items.forEach((it, i) => {
+    const place = it.appName ? `【${it.appName}】` : it.location ? `📍${it.location}` : '';
+    lines.push(`${i + 1}. ${it.emoji} **${it.name}** ${it.startTime}-${it.endTime} ${place}`);
+  });
+  return lines.join('\n');
+}
+
+/** 生成上课前提醒 Markdown 文本 */
+export function buildClassReminderMarkdown(
+  item: { name: string; emoji: string; startTime: string; endTime: string; location: string | null; appName: string | null }
+): string {
+  const place = item.appName ? `【${item.appName}】` : item.location ? `📍${item.location}` : '';
+  return `### ⏰ 上课提醒\n\n${item.emoji} **${item.name}** 将在 ${item.startTime} 开始（${item.endTime} 结束）\n\n${place}`;
+}

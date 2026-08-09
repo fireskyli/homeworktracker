@@ -146,6 +146,7 @@ model ScheduleEntry {
   startTime      String
   endTime        String
   location       String?
+  appName        String?   // 远程课的上课 App（如"腾讯会议/钉钉课堂"）
   remindDayBefore Int        @default(1)
   remindMinBefore Int        @default(30)
   isActive       Int         @default(1)

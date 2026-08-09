@@ -50,7 +50,7 @@ scheduleRouter.get('/:id', async (req, res) => {
 // 创建课程
 scheduleRouter.post('/', async (req, res) => {
   try {
-    const { name, type, emoji, repeatType, repeatDays, date, startTime, endTime, location, remindDayBefore, remindMinBefore } = req.body;
+    const { name, type, emoji, repeatType, repeatDays, date, startTime, endTime, location, appName, remindDayBefore, remindMinBefore } = req.body;
     if (!name || !startTime) return res.status(400).json({ error: '课程名和开始时间必填' });
 
     const now = new Date().toISOString();
@@ -65,6 +65,7 @@ scheduleRouter.post('/', async (req, res) => {
         startTime,
         endTime: endTime || startTime,
         location: location || null,
+        appName: appName || null,
         remindDayBefore: remindDayBefore ?? 1,
         remindMinBefore: remindMinBefore ?? 30,
         userId: req.userId,
@@ -82,7 +83,7 @@ scheduleRouter.post('/', async (req, res) => {
 scheduleRouter.put('/:id', async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { name, type, emoji, repeatType, repeatDays, date, startTime, endTime, location, remindDayBefore, remindMinBefore, isActive } = req.body;
+    const { name, type, emoji, repeatType, repeatDays, date, startTime, endTime, location, appName, remindDayBefore, remindMinBefore, isActive } = req.body;
 
     const data: Record<string, unknown> = { updatedAt: new Date().toISOString() };
     if (name !== undefined) data.name = name;
@@ -94,6 +95,7 @@ scheduleRouter.put('/:id', async (req, res) => {
     if (startTime !== undefined) data.startTime = startTime;
     if (endTime !== undefined) data.endTime = endTime;
     if (location !== undefined) data.location = location;
+    if (appName !== undefined) data.appName = appName;
     if (remindDayBefore !== undefined) data.remindDayBefore = remindDayBefore;
     if (remindMinBefore !== undefined) data.remindMinBefore = remindMinBefore;
     if (isActive !== undefined) data.isActive = isActive ? 1 : 0;

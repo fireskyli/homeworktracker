@@ -19,6 +19,7 @@ export async function createSchedule(data: {
   startTime: string;
   endTime?: string;
   location?: string;
+  appName?: string;
   remindDayBefore?: number;
   remindMinBefore?: number;
 }): Promise<ScheduleEntry> {
@@ -45,6 +46,7 @@ export async function updateSchedule(
     startTime: string;
     endTime: string;
     location: string;
+    appName: string;
     remindDayBefore: number;
     remindMinBefore: number;
     isActive: number;
@@ -78,4 +80,40 @@ export async function fetchDueReminders(): Promise<ScheduleReminder[]> {
   const res = await apiFetch(`${API}/reminders/now`);
   if (!res.ok) return [];
   return res.json();
+}
+
+// ── 推送配置 ──────────────────────────────
+export interface PushConfig {
+  webhook: string;
+  enabled: boolean;
+}
+
+export async function fetchPushConfig(): Promise<PushConfig> {
+  const res = await apiFetch('/api/schedule-push-config');
+  if (!res.ok) return { webhook: '', enabled: false };
+  return res.json();
+}
+
+export async function savePushConfig(config: PushConfig): Promise<PushConfig> {
+  const res = await apiFetch('/api/schedule-push-config', {
+    method: 'PUT',
+    body: JSON.stringify(config),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: '保存失败' }));
+    throw new Error(err.error || '保存失败');
+  }
+  return res.json();
+}
+
+export async function testPush(webhook: string): Promise<boolean> {
+  const res = await apiFetch('/api/schedule-push-config/test', {
+    method: 'POST',
+    body: JSON.stringify({ webhook }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: '测试失败' }));
+    throw new Error(err.error || '测试失败');
+  }
+  return true;
 }

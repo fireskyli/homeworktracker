@@ -15,6 +15,7 @@ import { exerciseRouter } from './routes/exercises';
 import { exerciseStatsRouter } from './routes/exercise-stats';
 import { authRouter } from './routes/auth';
 import { scheduleRouter } from './routes/schedules';
+import { pushConfigRouter } from './routes/schedule-push-config';
 import { scheduleAttendanceRouter } from './routes/schedule-attendance';
 
 const app = express();
@@ -48,6 +49,7 @@ app.use('/api/exercise-stats', exerciseStatsRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/schedules', scheduleAttendanceRouter);
 app.use('/api/schedules', scheduleRouter);
+app.use('/api/schedule-push-config', pushConfigRouter);
 
 // -- --
 app.get('/api/config', (_req, res) => {

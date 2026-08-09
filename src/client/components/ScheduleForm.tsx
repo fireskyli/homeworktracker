@@ -25,6 +25,7 @@ export default function ScheduleForm({ editing, defaultDate, onClose, onSaved, o
   const [startTime, setStartTime] = useState(editing?.startTime || '16:30');
   const [endTime, setEndTime] = useState(editing?.endTime || '18:00');
   const [location, setLocation] = useState(editing?.location || '');
+  const [appName, setAppName] = useState(editing?.appName || '');
   const [remindDayBefore, setRemindDayBefore] = useState(editing?.remindDayBefore ?? 1);
   const [remindMinBefore, setRemindMinBefore] = useState(editing?.remindMinBefore ?? 30);
   const [saving, setSaving] = useState(false);
@@ -50,6 +51,7 @@ export default function ScheduleForm({ editing, defaultDate, onClose, onSaved, o
         startTime,
         endTime: endTime || startTime,
         location: location.trim() || undefined,
+        appName: appName.trim() || undefined,
         remindDayBefore,
         remindMinBefore,
       };
@@ -205,6 +207,18 @@ export default function ScheduleForm({ editing, defaultDate, onClose, onSaved, o
             placeholder="如：少年宫 3 楼"
             className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+        </label>
+
+        <label className="block mb-3">
+          <span className="text-sm text-gray-600">上课 App（远程课可选）</span>
+          <input
+            type="text"
+            value={appName}
+            onChange={e => setAppName(e.target.value)}
+            placeholder="如：腾讯会议、钉钉课堂"
+            className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <span className="text-xs text-gray-400 mt-1">远程课填写上课 App，面授课填地点即可</span>
         </label>
 
         <div className="flex gap-3 mb-3">
