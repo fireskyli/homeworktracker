@@ -36,6 +36,15 @@ function getAttendanceStatus(
   const today = new Date().toISOString().split('T')[0];
   if (dateStr > today) return 'pending';
 
+  // 今天：课程未到结束时间 → pending（未开始/进行中），避免提前显示缺课
+  if (dateStr === today) {
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const endParts = entry.endTime.split(':').map(Number);
+    const endMin = endParts[0] * 60 + (endParts[1] || 0);
+    if (nowMin < endMin) return 'pending';
+  }
+
   // 查显式记录
   const record = attendanceMap.get(entry.id)?.get(dateStr);
   if (record) return record as 'attended' | 'makeup' | 'absent';

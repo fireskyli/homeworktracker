@@ -130,4 +130,51 @@ describe('课程出勤 API', () => {
     // 未来月份所有课程 total=0，应被过滤掉
     expect(res.body).toHaveLength(0);
   });
+
+  it('月度统计：今天课程未到结束时间不计入缺席', async () => {
+    // 创建一门今天的单次课程，结束时间设为未来（23:59），模拟"课程还没结束"
+    const today = todayStr();
+    const res = await request(app)
+      .post('/api/schedules')
+      .send({
+        name: '今晚的课',
+        type: 'course',
+        repeatType: 'once',
+        date: today,
+        startTime: '18:50',
+        endTime: '23:59', // 结束时间在今天之后（测试时点），课程未结束
+      });
+    const id = res.body.id;
+
+    const d = new Date();
+    const statRes = await request(app)
+      .get(`/api/schedules/attendance/stats?year=${d.getFullYear()}&month=${d.getMonth() + 1}`);
+    const stat = statRes.body.find((s: { scheduleId: number }) => s.scheduleId === id);
+    // 未到结束时间 → 不应计入 total/absent
+    expect(stat).toBeUndefined();
+  });
+
+  it('月度统计：今天课程已过结束时间计为缺席', async () => {
+    // 创建一门今天的单次课程，结束时间设为过去（00:00），模拟"课程已结束"
+    const today = todayStr();
+    const res = await request(app)
+      .post('/api/schedules')
+      .send({
+        name: '早上的课',
+        type: 'course',
+        repeatType: 'once',
+        date: today,
+        startTime: '00:00',
+        endTime: '00:01', // 结束时间已过，应计为缺席
+      });
+    const id = res.body.id;
+
+    const d = new Date();
+    const statRes = await request(app)
+      .get(`/api/schedules/attendance/stats?year=${d.getFullYear()}&month=${d.getMonth() + 1}`);
+    const stat = statRes.body.find((s: { scheduleId: number }) => s.scheduleId === id);
+    expect(stat).toBeDefined();
+    expect(stat.total).toBe(1);
+    expect(stat.absent).toBe(1);
+  });
 });

@@ -149,6 +149,16 @@ scheduleAttendanceRouter.get('/attendance/stats', async (req, res) => {
         // 未来日期不参与统计
         if (ds > todayStr) continue;
 
+        // 今天：课程未到结束时间不计入（避免提前显示缺课）
+        if (ds === todayStr) {
+          const nowH = today.getHours();
+          const nowM = today.getMinutes();
+          const nowMin = nowH * 60 + nowM;
+          const endParts = entry.endTime.split(':').map(Number);
+          const endMin = endParts[0] * 60 + (endParts[1] || 0);
+          if (nowMin < endMin) continue;
+        }
+
         total++;
         const status = attendanceMap.get(entry.id)?.get(ds);
         if (status === 'attended') attended++;
