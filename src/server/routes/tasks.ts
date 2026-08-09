@@ -152,7 +152,7 @@ taskRouter.get('/:id', async (req, res) => {
 // 创建任务
 taskRouter.post('/', async (req, res) => {
   try {
-    const { name, subject, emoji, estimatedMin, deadlineTime, repeatType, repeatDays, startDate, points } = req.body;
+    const { name, subject, emoji, estimatedMin, deadlineTime, repeatType, repeatDays, startDate, endDate, points } = req.body;
     if (!name || !subject) return res.status(400).json({ error: '任务名和科目必填' });
 
     const now = new Date().toISOString();
@@ -166,6 +166,7 @@ taskRouter.post('/', async (req, res) => {
         repeatType: repeatType || 'once',
         repeatDays: JSON.stringify(repeatDays || []),
         startDate: startDate || null,
+        endDate: endDate || null,
         points: points ?? 5,
         userId: req.userId,
         createdAt: now,
@@ -182,7 +183,7 @@ taskRouter.post('/', async (req, res) => {
 taskRouter.put('/:id', async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { name, subject, emoji, estimatedMin, deadlineTime, repeatType, repeatDays, sortOrder, isActive, startDate, points } = req.body;
+    const { name, subject, emoji, estimatedMin, deadlineTime, repeatType, repeatDays, sortOrder, isActive, startDate, endDate, points } = req.body;
 
     const data: Record<string, unknown> = { updatedAt: new Date().toISOString() };
     if (name !== undefined) data.name = name;
@@ -195,6 +196,7 @@ taskRouter.put('/:id', async (req, res) => {
     if (sortOrder !== undefined) data.sortOrder = sortOrder;
     if (isActive !== undefined) data.isActive = isActive ? 1 : 0;
     if (startDate !== undefined) data.startDate = startDate;
+    if (endDate !== undefined) data.endDate = endDate;
     if (points !== undefined) data.points = points;
 
     const task = await prisma.task.update({ where: { id, userId: req.userId }, data });

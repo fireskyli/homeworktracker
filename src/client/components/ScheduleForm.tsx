@@ -22,6 +22,8 @@ export default function ScheduleForm({ editing, defaultDate, onClose, onSaved, o
     editing?.repeatDays?.length ? editing.repeatDays : [1, 2, 3, 4, 5]
   );
   const [date, setDate] = useState(editing?.date || defaultDate || new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(editing?.startDate || '');
+  const [endDate, setEndDate] = useState(editing?.endDate || '');
   const [startTime, setStartTime] = useState(editing?.startTime || '16:30');
   const [endTime, setEndTime] = useState(editing?.endTime || '18:00');
   const [location, setLocation] = useState(editing?.location || '');
@@ -47,6 +49,8 @@ export default function ScheduleForm({ editing, defaultDate, onClose, onSaved, o
         emoji,
         repeatType,
         repeatDays: repeatType === 'weekly' ? repeatDays : [],
+        startDate: repeatType === 'weekly' ? (startDate || undefined) : undefined,
+        endDate: repeatType === 'weekly' ? (endDate || undefined) : undefined,
         date: repeatType === 'once' ? date : undefined,
         startTime,
         endTime: endTime || startTime,
@@ -162,6 +166,32 @@ export default function ScheduleForm({ editing, defaultDate, onClose, onSaved, o
                 </button>
               ))}
             </div>
+          </label>
+        )}
+
+        {repeatType === 'weekly' && (
+          <label className="block mb-3">
+            <span className="text-sm text-gray-600">重复开始日期（可选）</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-xs text-gray-400 mt-1">留空表示不限制开始日期</span>
+          </label>
+        )}
+
+        {repeatType === 'weekly' && (
+          <label className="block mb-3">
+            <span className="text-sm text-gray-600">重复结束日期（可选）</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+              className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-xs text-gray-400 mt-1">留空表示永不结束</span>
           </label>
         )}
 

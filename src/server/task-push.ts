@@ -58,6 +58,9 @@ export async function getTodayTasks(userId: number, dateStr?: string): Promise<T
 
   return tasks
     .filter(task => {
+      // 重复任务起止日期过滤（startDate/endDate 为空表示不限制）
+      if (task.startDate && todayStr < task.startDate) return false;
+      if (task.endDate && todayStr > task.endDate) return false;
       if (task.repeatType === 'daily') return true;
       if (task.repeatType === 'once') {
         const taskDate = task.startDate || task.createdAt.slice(0, 10);
@@ -170,18 +173,24 @@ export async function getWeeklyStats(
   checkinDays: number;
   pointsEarned: number;
   subjectDist: Record<string, number>;
+  taskDetails: { name: string; subject: string; emoji: string; doneCount: number; missed: boolean }[];
+  exerciseSummary: { total: number; suns: number; byType: { name: string; emoji: string; count: number; suns: number }[] };
 }> {
   const monday = new Date(weekStart + 'T00:00:00');
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
   const weekEnd = `${sunday.getFullYear()}-${String(sunday.getMonth() + 1).padStart(2, '0')}-${String(sunday.getDate()).padStart(2, '0')}`;
 
-  const [checkins, tasks] = await Promise.all([
+  const [checkins, tasks, exercises] = await Promise.all([
     prisma.checkIn.findMany({
       where: { date: { gte: weekStart, lte: weekEnd }, userId },
-      include: { task: { select: { subject: true, points: true } } },
+      include: { task: { select: { name: true, subject: true, emoji: true, points: true } } },
     }),
     prisma.task.findMany({ where: { isActive: 1, userId } }),
+    prisma.exercise.findMany({
+      where: { date: { gte: weekStart, lte: weekEnd }, userId },
+      include: { exerciseType: { select: { name: true, emoji: true } } },
+    }),
   ]);
 
   const taskPoints = new Map(tasks.map(t => [t.id, t.points || 0]));
@@ -192,6 +201,30 @@ export async function getWeeklyStats(
     const q = c.quality || 0;
     pointsEarned += q > 0 ? Math.min(q, base) : 0;
     subjectDist[c.task.subject] = (subjectDist[c.task.subject] || 0) + 1;
+  }
+
+  // 任务完成情况：每个任务在这周被打卡的次数
+  const taskDoneCount: Record<number, number> = {};
+  for (const c of checkins) {
+    taskDoneCount[c.taskId] = (taskDoneCount[c.taskId] || 0) + 1;
+  }
+  const taskDetails = tasks.map(t => ({
+    name: t.name,
+    subject: t.subject,
+    emoji: t.emoji,
+    doneCount: taskDoneCount[t.id] || 0,
+    missed: !taskDoneCount[t.id], // 整周都没打卡 = 未完成
+  }));
+
+  // 本周运动统计
+  let exerciseSuns = 0;
+  const exByType: Record<string, { name: string; emoji: string; count: number; suns: number }> = {};
+  for (const e of exercises) {
+    const key = String(e.exerciseTypeId);
+    if (!exByType[key]) exByType[key] = { name: e.exerciseType.name, emoji: e.exerciseType.emoji, count: 0, suns: 0 };
+    exByType[key].count++;
+    exByType[key].suns += e.quality || 0;
+    exerciseSuns += e.quality || 0;
   }
 
   const weekTotalTasks = tasks.length * 7;
@@ -207,6 +240,8 @@ export async function getWeeklyStats(
     checkinDays,
     pointsEarned,
     subjectDist,
+    taskDetails,
+    exerciseSummary: { total: exercises.length, suns: exerciseSuns, byType: Object.values(exByType) },
   };
 }
 

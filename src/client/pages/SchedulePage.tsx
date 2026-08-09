@@ -14,8 +14,10 @@ function pad(n: number) {
   return String(n).padStart(2, '0');
 }
 
-/** 判断某课程在某天（YYYY-MM-DD）是否发生 */
+/** 判断某课程在某天（YYYY-MM-DD）是否发生（含起止日期判断） */
 function entryOccursOn(entry: ScheduleEntry, dateStr: string): boolean {
+  if (entry.startDate && dateStr < entry.startDate) return false;
+  if (entry.endDate && dateStr > entry.endDate) return false;
   if (entry.repeatType === 'weekly') {
     const d = new Date(dateStr + 'T00:00:00');
     return entry.repeatDays.includes(d.getDay());

@@ -36,6 +36,7 @@ model Task {
   estimatedMin  Int        @default(0)
   deadlineTime  String?
   startDate     String?
+  endDate       String?
   repeatType    String     @default("once") // once | daily | weekly
   repeatDays    String     @default("[]")   // JSON array [1,3,5]
   sortOrder     Int        @default(0)
@@ -142,6 +143,8 @@ model ScheduleEntry {
   emoji          String      @default("📖")
   repeatType     String      @default("weekly")
   repeatDays     String      @default("[]")
+  startDate      String?   // 重复开始日期（weekly 有效），NULL 表示不限制
+  endDate        String?   // 重复结束日期（weekly 有效），NULL 表示永不结束
   date           String?
   startTime      String
   endTime        String

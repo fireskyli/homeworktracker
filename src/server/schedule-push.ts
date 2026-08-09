@@ -93,10 +93,12 @@ export async function setSetting(key: string, value: string, userId: number): Pr
 
 /** 获取某用户今天的课程（按发生规则匹配） */
 function todaySchedule(
-  entries: { repeatType: string; repeatDays: string; date: string | null; startTime: string; endTime: string; name: string; emoji: string; location: string | null; appName: string | null }[],
+  entries: { repeatType: string; repeatDays: string; date: string | null; startDate: string | null; endDate: string | null; startTime: string; endTime: string; name: string; emoji: string; location: string | null; appName: string | null }[],
   todayStr: string
 ) {
   return entries.filter(e => {
+    if (e.startDate && todayStr < e.startDate) return false;
+    if (e.endDate && todayStr > e.endDate) return false;
     const d = new Date(todayStr + 'T00:00:00');
     if (e.repeatType === 'weekly') {
       try {
@@ -167,6 +169,8 @@ export async function pushClassReminders(userId = STANDALONE_USER_ID): Promise<n
     repeatType: e.repeatType,
     repeatDays: e.repeatDays,
     date: e.date,
+    startDate: e.startDate,
+    endDate: e.endDate,
     startTime: e.startTime,
     remindDayBefore: 0,       // 不推送提前1天
     remindMinBefore: CLASS_REMIND_MIN,

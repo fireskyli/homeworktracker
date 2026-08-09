@@ -4,6 +4,8 @@ import {
   buildTodayScheduleMarkdown,
   buildClassReminderMarkdown,
   buildWeeklyScheduleMarkdown,
+  buildWeeklySummaryMarkdown,
+  buildDailySummaryMarkdown,
 } from '../../src/server/notifier';
 
 describe('notifier 钉钉推送', () => {
@@ -78,5 +80,40 @@ describe('notifier 钉钉推送', () => {
     const md = buildWeeklyScheduleMarkdown([], start, 7);
     expect(md).toContain('励夏的课程');
     expect(md).toContain('无课程');
+  });
+
+  it('buildWeeklySummaryMarkdown：含周统计与科目分布', () => {
+    const md = buildWeeklySummaryMarkdown({
+      weekStart: '2026-08-03',
+      weekEnd: '2026-08-09',
+      total: 4,
+      done: 20,
+      rate: 71,
+      checkinDays: 6,
+      pointsEarned: 40,
+      subjectDist: { 数学: 8, 语文: 12 },
+      taskDetails: [
+        { name: '数学口算', subject: '数学', emoji: '🔢', doneCount: 7, missed: false },
+        { name: '练字', subject: '语文', emoji: '✍️', doneCount: 0, missed: true },
+      ],
+      exerciseSummary: {
+        total: 5,
+        suns: 12,
+        byType: [{ name: '跳绳', emoji: '🪢', count: 5, suns: 12 }],
+      },
+    });
+    expect(md).toContain('励夏的课程');
+    expect(md).toContain('2026-08-03 ~ 2026-08-09');
+    expect(md).toContain('完成率 **71%**');
+    expect(md).toContain('打卡天数：**6** 天');
+    expect(md).toContain('数学：8 次');
+    expect(md).toContain('语文：12 次');
+    expect(md).toContain('已完成任务');
+    expect(md).toContain('数学口算');
+    expect(md).toContain('未完成任务');
+    expect(md).toContain('练字');
+    expect(md).toContain('本周运动');
+    expect(md).toContain('跳绳');
+    expect(md).toContain('☀️');
   });
 });

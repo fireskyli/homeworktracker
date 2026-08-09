@@ -193,6 +193,8 @@ export function buildWeeklySummaryMarkdown(data: {
   checkinDays: number;
   pointsEarned: number;
   subjectDist: Record<string, number>;
+  taskDetails: { name: string; subject: string; emoji: string; doneCount: number; missed: boolean }[];
+  exerciseSummary: { total: number; suns: number; byType: { name: string; emoji: string; count: number; suns: number }[] };
 }): string {
   const lines = ['#### 📊 本周任务完成总结 · ' + KEYWORD, ''];
   lines.push('**' + data.weekStart + ' ~ ' + data.weekEnd + '**');
@@ -200,13 +202,46 @@ export function buildWeeklySummaryMarkdown(data: {
   lines.push('本周任务完成 **' + data.done + '** 次，完成率 **' + data.rate + '%**');
   lines.push('打卡天数：**' + data.checkinDays + '** 天');
   lines.push('获得积分：**' + data.pointsEarned + '**', '');
+
+  // 分科目
   const subjects = Object.entries(data.subjectDist);
   if (subjects.length > 0) {
     lines.push('**分科目完成情况：**');
     subjects.forEach(([sub, count]) => {
       lines.push('- ' + sub + '：' + count + ' 次');
     });
+    lines.push('');
   }
-  lines.push('', '继续坚持，下周更棒！🌟');
+
+  // 任务完成/未完成
+  if (data.taskDetails.length > 0) {
+    const doneTasks = data.taskDetails.filter(t => !t.missed);
+    const missedTasks = data.taskDetails.filter(t => t.missed);
+    if (doneTasks.length > 0) {
+      lines.push('**已完成任务：**');
+      doneTasks.forEach(t => {
+        lines.push('- ' + t.emoji + ' ' + t.name + '（' + t.subject + '）' + t.doneCount + ' 次');
+      });
+      lines.push('');
+    }
+    if (missedTasks.length > 0) {
+      lines.push('**未完成任务：**');
+      missedTasks.forEach(t => {
+        lines.push('- ' + t.emoji + ' ' + t.name + '（' + t.subject + '）');
+      });
+      lines.push('');
+    }
+  }
+
+  // 本周运动
+  if (data.exerciseSummary.total > 0) {
+    lines.push('**本周运动：**');
+    data.exerciseSummary.byType.forEach(t => {
+      lines.push(t.emoji + ' ' + t.name + ' ' + t.count + '次 ☀️' + t.suns);
+    });
+    lines.push('共 ' + data.exerciseSummary.total + ' 次，获得 ' + data.exerciseSummary.suns + ' ☀️', '');
+  }
+
+  lines.push('继续坚持，下周更棒！🌟');
   return lines.join('\n');
 }

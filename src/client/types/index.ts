@@ -184,6 +184,8 @@ export interface ScheduleEntry {
   emoji: string;
   repeatType: 'weekly' | 'once';
   repeatDays: number[]; // 0=周日..6=周六
+  startDate: string | null;
+  endDate: string | null;
   date: string | null;
   startTime: string; // HH:mm
   endTime: string; // HH:mm

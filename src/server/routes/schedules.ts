@@ -50,7 +50,7 @@ scheduleRouter.get('/:id', async (req, res) => {
 // 创建课程
 scheduleRouter.post('/', async (req, res) => {
   try {
-    const { name, type, emoji, repeatType, repeatDays, date, startTime, endTime, location, appName, remindDayBefore, remindMinBefore } = req.body;
+    const { name, type, emoji, repeatType, repeatDays, startDate, endDate, date, startTime, endTime, location, appName, remindDayBefore, remindMinBefore } = req.body;
     if (!name || !startTime) return res.status(400).json({ error: '课程名和开始时间必填' });
 
     const now = new Date().toISOString();
@@ -61,6 +61,8 @@ scheduleRouter.post('/', async (req, res) => {
         emoji: emoji || '📖',
         repeatType: repeatType || 'weekly',
         repeatDays: JSON.stringify(repeatDays || []),
+        startDate: startDate || null,
+        endDate: endDate || null,
         date: date || null,
         startTime,
         endTime: endTime || startTime,
@@ -83,7 +85,7 @@ scheduleRouter.post('/', async (req, res) => {
 scheduleRouter.put('/:id', async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { name, type, emoji, repeatType, repeatDays, date, startTime, endTime, location, appName, remindDayBefore, remindMinBefore, isActive } = req.body;
+    const { name, type, emoji, repeatType, repeatDays, startDate, endDate, date, startTime, endTime, location, appName, remindDayBefore, remindMinBefore, isActive } = req.body;
 
     const data: Record<string, unknown> = { updatedAt: new Date().toISOString() };
     if (name !== undefined) data.name = name;
@@ -91,6 +93,8 @@ scheduleRouter.put('/:id', async (req, res) => {
     if (emoji !== undefined) data.emoji = emoji;
     if (repeatType !== undefined) data.repeatType = repeatType;
     if (repeatDays !== undefined) data.repeatDays = JSON.stringify(repeatDays);
+    if (startDate !== undefined) data.startDate = startDate;
+    if (endDate !== undefined) data.endDate = endDate;
     if (date !== undefined) data.date = date;
     if (startTime !== undefined) data.startTime = startTime;
     if (endTime !== undefined) data.endTime = endTime;
@@ -139,6 +143,8 @@ scheduleRouter.get('/reminders/now', async (req, res) => {
       repeatType: s.repeatType,
       repeatDays: s.repeatDays,
       date: s.date,
+      startDate: s.startDate,
+      endDate: s.endDate,
       startTime: s.startTime,
       remindDayBefore: s.remindDayBefore,
       remindMinBefore: s.remindMinBefore,

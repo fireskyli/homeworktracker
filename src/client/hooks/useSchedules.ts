@@ -15,6 +15,8 @@ export async function createSchedule(data: {
   emoji?: string;
   repeatType?: string;
   repeatDays?: number[];
+  startDate?: string;
+  endDate?: string;
   date?: string;
   startTime: string;
   endTime?: string;
@@ -42,6 +44,8 @@ export async function updateSchedule(
     emoji: string;
     repeatType: string;
     repeatDays: number[];
+    startDate: string | null;
+    endDate: string | null;
     date: string;
     startTime: string;
     endTime: string;

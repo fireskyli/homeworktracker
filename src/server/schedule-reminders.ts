@@ -10,6 +10,8 @@ export type ReminderRule = {
   repeatType: string;
   repeatDays: string;
   date: string | null;
+  startDate: string | null;
+  endDate: string | null;
   startTime: string;
   remindDayBefore: number;
   remindMinBefore: number;
@@ -33,8 +35,16 @@ export function parseRepeatDays(json: string): number[] {
   }
 }
 
-/** 判断某天（YYYY-MM-DD）是否匹配该课程的重复规则 */
+/** 判断日期是否在课程的有效期内（startDate <= date <= endDate，空值表示不限制） */
+export function entryInRange(rule: ReminderRule, dateStr: string): boolean {
+  if (rule.startDate && dateStr < rule.startDate) return false;
+  if (rule.endDate && dateStr > rule.endDate) return false;
+  return true;
+}
+
+/** 判断某天（YYYY-MM-DD）是否匹配该课程的重复规则（含起止日期判断） */
 export function matchesDate(rule: ReminderRule, dateStr: string): boolean {
+  if (!entryInRange(rule, dateStr)) return false;
   if (rule.repeatType === 'weekly') {
     const d = new Date(dateStr + 'T00:00:00');
     return parseRepeatDays(rule.repeatDays).includes(d.getDay());

@@ -14,7 +14,9 @@ function parseRepeatDays(json: string): number[] {
 }
 
 // -- 辅助：判断课程在某天是否发生 --
-function entryOccursOn(entry: { repeatType: string; repeatDays: string; date: string | null }, dateStr: string): boolean {
+function entryOccursOn(entry: { repeatType: string; repeatDays: string; date: string | null; startDate?: string | null; endDate?: string | null }, dateStr: string): boolean {
+  if (entry.startDate && dateStr < entry.startDate) return false;
+  if (entry.endDate && dateStr > entry.endDate) return false;
   if (entry.repeatType === 'weekly') {
     const d = new Date(dateStr + 'T00:00:00');
     return parseRepeatDays(entry.repeatDays).includes(d.getDay());

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import app from '../../src/server/app';
+import { prisma, initSentinelUser } from '../../src/server/db';
 import { resetDb } from '../helpers';
 
 // mock 钉钉发送，避免真实网络请求
@@ -88,6 +89,15 @@ describe('学习任务 Markdown 构建', () => {
       checkinDays: 6,
       pointsEarned: 40,
       subjectDist: { 数学: 8, 语文: 12 },
+      taskDetails: [
+        { name: '数学口算', subject: '数学', emoji: '🔢', doneCount: 7, missed: false },
+        { name: '练字', subject: '语文', emoji: '✍️', doneCount: 0, missed: true },
+      ],
+      exerciseSummary: {
+        total: 5,
+        suns: 12,
+        byType: [{ name: '跳绳', emoji: '🪢', count: 5, suns: 12 }],
+      },
     });
     expect(md).toContain('励夏的课程');
     expect(md).toContain('2026-08-03 ~ 2026-08-09');
@@ -95,13 +105,22 @@ describe('学习任务 Markdown 构建', () => {
     expect(md).toContain('打卡天数：**6** 天');
     expect(md).toContain('数学：8 次');
     expect(md).toContain('语文：12 次');
+    expect(md).toContain('已完成任务');
+    expect(md).toContain('数学口算');
+    expect(md).toContain('未完成任务');
+    expect(md).toContain('练字');
+    expect(md).toContain('本周运动');
+    expect(md).toContain('跳绳');
+    expect(md).toContain('☀️');
   });
+
 });
 
 describe('学习任务统计函数', () => {
   beforeAll(resetDb);
   beforeEach(async () => {
     await resetDb();
+    await initSentinelUser();
     // 初始化家长密码
     await request(app).post('/api/settings/verify').send({ password: '1234' });
   });
@@ -230,6 +249,49 @@ describe('学习任务统计函数', () => {
     expect(stats.checkinDays).toBe(1);
     expect(stats.pointsEarned).toBe(2);
     expect(stats.subjectDist['语文']).toBe(1);
+  });
+
+  it('getWeeklyStats：包含任务详情和运动数据', async () => {
+    // 直接创建任务
+    const mathTask = await prisma.task.create({
+      data: {
+        name: '数学口算', subject: '数学', emoji: '🔢', repeatType: 'daily', points: 3,
+        userId: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      },
+    });
+    await prisma.task.create({
+      data: {
+        name: '练字', subject: '语文', emoji: '✍️', repeatType: 'daily', points: 2,
+        userId: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      },
+    });
+    const today = new Date().toISOString().split('T')[0];
+
+    // 只打卡数学口算（练字未完成）
+    await request(app).post('/api/checkins').send({ taskId: mathTask.id, date: today, quality: 3 });
+
+    // 运动
+    const exType = await prisma.exerciseType.create({
+      data: { name: '跳绳', emoji: '🪢', unit: '次', userId: 0, createdAt: new Date().toISOString() },
+    });
+    await prisma.exercise.create({
+      data: {
+        exerciseTypeId: exType.id, date: today, quality: 2, userId: 0,
+        completedAt: new Date().toISOString(), createdAt: new Date().toISOString(),
+      },
+    });
+
+    // 本周一
+    const dow = new Date().getDay() || 7;
+    const monday = new Date();
+    monday.setDate(monday.getDate() - dow + 1);
+    const weekStart = monday.toISOString().split('T')[0];
+
+    const stats = await getWeeklyStats(weekStart, 0);
+    expect(stats.taskDetails.length).toBeGreaterThanOrEqual(2);
+    expect(stats.taskDetails.filter(t => t.missed).length).toBeGreaterThanOrEqual(1);
+    expect(stats.exerciseSummary.total).toBe(1);
+    expect(stats.exerciseSummary.suns).toBe(2);
   });
 });
 
