@@ -6,7 +6,7 @@ import path from 'path';
 // Prisma 会把文件放在 schema 所在目录 (prisma/prisma/) 下，即 prisma/prisma/homework.db
 // 这里直接指向 Prisma 实际使用的路径，避免路径不一致导致备份/恢复静默失败
 const DB_PATH = path.resolve(process.cwd(), 'prisma', 'prisma', 'homework.db');
-const BACKUP_DIR = path.resolve(process.cwd(), 'backups');
+export const BACKUP_DIR = path.resolve(process.cwd(), 'backups');
 const MAX_BACKUPS = 30; // 保留最近 30 份备份
 
 /**
