@@ -47,7 +47,7 @@
 
 ## 快速启动
 
-> **默认单机模式**，零配置，开箱即用。无需设置任何环境变量。
+> **默认单机模式**，SQLite 本地数据库，适合家庭自用 / 局域网。
 
 ### 1. 安装依赖
 
@@ -55,7 +55,20 @@
 npm install
 ```
 
-### 2. 初始化数据库
+### 2. 创建环境变量文件 `.env`
+
+仓库不包含 `.env`（已加入 `.gitignore`），首次使用需手动创建，放在项目根目录：
+
+```env
+# 单机模式（SQLite）配置
+DATABASE_URL="file:./prisma/homework.db"
+PORT=3000
+```
+
+> `DATABASE_URL` 是 Prisma 的必填项（`prisma/schema.prisma` 中通过 `env("DATABASE_URL")` 读取），缺少会导致 `prisma db push` 报 `P1012: Environment variable not found`。
+> 路径 `file:./prisma/homework.db` 是代码中的既定约定（见 `src/server/backup.ts`），请勿随意修改。
+
+### 3. 初始化数据库
 
 ```bash
 npx prisma db push
@@ -63,7 +76,7 @@ npx prisma db push
 
 > 首次运行或 Schema 变更后执行。已创建过数据库则自动保留数据。
 
-### 3. 启动服务
+### 4. 启动服务
 
 ```bash
 npm run dev
@@ -76,7 +89,7 @@ npm run dev
 
 浏览器打开 <http://localhost:5173> 即可使用。
 
-### 4. 关闭服务
+### 5. 关闭服务
 
 在终端中按 **Ctrl + C** 停止服务。
 
