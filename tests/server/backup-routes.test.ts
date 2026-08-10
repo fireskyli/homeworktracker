@@ -5,6 +5,7 @@ vi.mock('../../src/server/backup', () => ({
   backupDatabase: vi.fn(),
   listBackups: vi.fn(),
   restoreBackup: vi.fn(),
+  BACKUP_DIR: 'C:/__backups__',
 }));
 
 import app from '../../src/server/app';

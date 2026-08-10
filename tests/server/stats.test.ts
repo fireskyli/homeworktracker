@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import app from '../../src/server/app';
-import { resetDb, todayStr, daysAgo } from '../helpers';
+import { resetDb, todayStr, daysAgo, thisWeekDay } from '../helpers';
 
 async function createTask(name: string, subject: string, points = 5) {
   const res = await request(app).post('/api/tasks').send({ name, subject, points });
@@ -188,9 +188,13 @@ describe('统计 API', () => {
     await ensurePassword();
     const t1 = await createTask('阅读', '语文', 5);
     const t2 = await createTask('口算', '数学', 3);
-    await checkIn(t1.id, todayStr(), 3);
-    await checkIn(t2.id, todayStr(), 3);
-    await checkIn(t1.id, daysAgo(1), 3);
+    // 用本周一、本周二两个固定日期造数，保证无论哪天运行都落在当前周报范围内
+    // （周报按"本周一~本周日"统计；若用 daysAgo(1)，周一运行时昨天会落到上周）。
+    const dayA = thisWeekDay(1); // 本周一
+    const dayB = thisWeekDay(2); // 本周二
+    await checkIn(t1.id, dayA, 3);
+    await checkIn(t2.id, dayA, 3);
+    await checkIn(t1.id, dayB, 3);
 
     const type = await request(app).post('/api/exercise-types').send({ name: '跳绳', password: '1234' });
     await request(app).post('/api/exercises').send({ exerciseTypeId: type.body.id, quality: 1 });
@@ -221,10 +225,10 @@ describe('统计 API', () => {
     });
 
     expect(res.body.dailyBreakdown).toHaveLength(7);
-    const todayEntry = res.body.dailyBreakdown.find((d: { date: string }) => d.date === todayStr());
-    expect(todayEntry).toMatchObject({ count: 2, rate: 100, pointsEarned: 6 });
-    const yesterdayEntry = res.body.dailyBreakdown.find((d: { date: string }) => d.date === daysAgo(1));
-    expect(yesterdayEntry).toMatchObject({ count: 1, rate: 50, pointsEarned: 3 });
+    const dayAEntry = res.body.dailyBreakdown.find((d: { date: string }) => d.date === dayA);
+    expect(dayAEntry).toMatchObject({ count: 2, rate: 100, pointsEarned: 6 });
+    const dayBEntry = res.body.dailyBreakdown.find((d: { date: string }) => d.date === dayB);
+    expect(dayBEntry).toMatchObject({ count: 1, rate: 50, pointsEarned: 3 });
     expect(res.body.redemptions).toHaveLength(1);
     expect(res.body.redemptions[0]).toMatchObject({ name: '零食', points: 2 });
   });

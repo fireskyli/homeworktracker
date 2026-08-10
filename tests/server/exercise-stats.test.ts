@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import app from '../../src/server/app';
-import { resetDb, todayStr, daysAgo } from '../helpers';
+import { resetDb, todayStr, daysAgo, thisWeekDay } from '../helpers';
 
 async function ensurePassword() {
   await request(app).post('/api/settings/verify').send({ password: '1234' });
@@ -119,8 +119,12 @@ describe('运动统计 API', () => {
 
   it('weekly：运动周报', async () => {
     const t = await createType('跳绳');
-    await createExercise(t.id, todayStr(), 2);
-    await createExercise(t.id, daysAgo(1), 1);
+    // 用本周一、本周二两个固定日期造数，保证无论哪天运行都落在当前周报范围内
+    // （周报按"本周一~本周日"统计；若用 daysAgo(1)，周一运行时昨天会落到上周）。
+    const dayA = thisWeekDay(1); // 本周一
+    const dayB = thisWeekDay(2); // 本周二
+    await createExercise(t.id, dayA, 2);
+    await createExercise(t.id, dayB, 1);
 
     const res = await request(app).get('/api/exercise-stats/weekly');
     expect(res.status).toBe(200);
@@ -128,13 +132,15 @@ describe('运动统计 API', () => {
       totalExercises: 2,
       totalSuns: 3,
       exerciseDays: 2,
-      makeupCount: 1, // 昨天创建的记录会被标记为补卡
+      // 非今天创建的记录会被标记补卡。makeupCount = 两个造数日中非今天的数量，
+      // 随运行日动态变化（周一运行时 dayA=今天，周二运行时 dayB=今天，其余两天都非今天）。
+      makeupCount: [dayA, dayB].filter(d => d !== todayStr()).length,
     });
     expect(res.body.dailyBreakdown).toHaveLength(7);
-    const todayEntry = res.body.dailyBreakdown.find((d: { date: string }) => d.date === todayStr());
-    expect(todayEntry).toMatchObject({ count: 1, suns: 2 });
-    expect(todayEntry.exercises).toHaveLength(1);
-    expect(todayEntry.exercises[0]).toMatchObject({ name: '跳绳', quality: 2 });
+    const dayAEntry = res.body.dailyBreakdown.find((d: { date: string }) => d.date === dayA);
+    expect(dayAEntry).toMatchObject({ count: 1, suns: 2 });
+    expect(dayAEntry.exercises).toHaveLength(1);
+    expect(dayAEntry.exercises[0]).toMatchObject({ name: '跳绳', quality: 2 });
     expect(res.body.typeDist).toHaveLength(1);
     expect(res.body.typeDist[0]).toMatchObject({ name: '跳绳', count: 2, suns: 3 });
   });
