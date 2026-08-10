@@ -3,6 +3,9 @@ import { formatWeekRange, getWeekDates } from '../utils/date';
 import { fetchWeeklyReport } from '../hooks/useStats';
 import { fetchExerciseWeekly } from '../hooks/useExerciseStats';
 import type { WeeklyReport, ExerciseWeeklyReport } from '../types';
+import StatsOverview from '../components/StatsOverview';
+import CheckInCalendar from '../components/CheckInCalendar';
+import StatsChart from '../components/StatsChart';
 
 export default function WeeklyReportPage() {
   const [report, setReport] = useState<WeeklyReport | null>(null);
@@ -83,12 +86,11 @@ export default function WeeklyReportPage() {
         </button>
       </div>
 
+      {/* 累计概览（总打卡/连续打卡/完成率，来自全局 stats，不随周切换变化） */}
+      <StatsOverview />
+
       {/* 核心指标 */}
       <div className="grid grid-cols-2 gap-3 mb-6">
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-          <div className="text-xs text-gray-500 mb-1">本周完成率</div>
-          <p className="text-2xl font-bold text-blue-600">{report.weekRate}%</p>
-        </div>
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
           <div className="text-xs text-gray-500 mb-1">打卡天数</div>
           <p className="text-2xl font-bold text-green-600">{report.checkinDays}/7</p>
@@ -169,6 +171,12 @@ export default function WeeklyReportPage() {
           )}
         </div>
       </div>
+
+      {/* 月历打卡（整月视角，来自全局数据） */}
+      <CheckInCalendar />
+
+      {/* 近7天完成率趋势（只显示折线；科目分布见下方周报自带条形） */}
+      <StatsChart showSubject={false} />
 
       {/* 科目分布 */}
       {Object.keys(report.subjectDist).length > 0 && (

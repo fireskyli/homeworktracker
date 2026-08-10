@@ -3,7 +3,7 @@ import { useApp } from '../App';
 import { ExerciseType, Exercise, ExerciseSet, ExerciseStatsOverview } from '../types';
 import { fetchExerciseTypes, createExerciseType } from '../hooks/useExerciseTypes';
 import { fetchTodayExercises, createExercise, deleteExercise } from '../hooks/useExercises';
-import { fetchExerciseOverview } from '../hooks/useExerciseStats';
+import { fetchExerciseOverview, fetchMinExerciseSuns, saveMinExerciseSuns } from '../hooks/useExerciseStats';
 import ExerciseForm from '../components/ExerciseForm';
 import ExerciseItem from '../components/ExerciseItem';
 import ExerciseCalendar from '../components/ExerciseCalendar';
@@ -33,6 +33,8 @@ export default function ExercisePage() {
   const [showMakeupPicker, setShowMakeupPicker] = useState(false);
   const [makeupDate, setMakeupDate] = useState('');
   const [makeupExercises, setMakeupExercises] = useState<Exercise[]>([]);
+  const [minSuns, setMinSuns] = useState<number>(3);
+  const [loadingMinSuns, setLoadingMinSuns] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const now = new Date();
@@ -50,6 +52,10 @@ export default function ExercisePage() {
       setExerciseTypes(types);
       setTodayExercises(today);
       setOverview(ov);
+      try {
+        const ms = await fetchMinExerciseSuns();
+        setMinSuns(ms);
+      } catch (_) { /* 非家长或未配置时忽略 */ }
     } catch (err) {
       console.error('加载运动数据失败:', err);
     } finally {
@@ -183,6 +189,52 @@ export default function ExercisePage() {
               <div className="text-xs text-gray-400">次</div>
             </div>
           </div>
+
+          {/* 每日最低太阳数目标（家长可设置） */}
+          {isParentMode && (
+            <div className="bg-yellow-50 rounded-xl p-4 mb-4 border border-yellow-100">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm font-medium text-yellow-700">每日运动目标（最低太阳数）</div>
+                <div className="text-sm text-yellow-600">
+                  今日 ☀️ {overview.todaySuns} / {minSuns}
+                </div>
+              </div>
+              <div className="h-2 bg-yellow-200 rounded-full overflow-hidden mb-3">
+                <div
+                  className={`h-full rounded-full transition-all ${overview.todaySuns >= minSuns ? 'bg-green-500' : 'bg-yellow-500'}`}
+                  style={{ width: `${Math.min(100, (overview.todaySuns / Math.max(1, minSuns)) * 100)}%` }}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">调整目标：</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={50}
+                  value={minSuns}
+                  onChange={e => setMinSuns(Number(e.target.value))}
+                  className="w-16 px-2 py-1 text-sm border border-gray-200 rounded-lg text-center"
+                />
+                <button
+                  disabled={loadingMinSuns}
+                  onClick={async () => {
+                    try {
+                      setLoadingMinSuns(true);
+                      const saved = await saveMinExerciseSuns(minSuns);
+                      setMinSuns(saved);
+                    } catch (err) {
+                      console.error('保存运动目标失败:', err);
+                    } finally {
+                      setLoadingMinSuns(false);
+                    }
+                  }}
+                  className="px-3 py-1 text-sm bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50"
+                >
+                  {loadingMinSuns ? '保存中' : '保存'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* 今日运动记录 */}
           {todayExercises.length > 0 && (

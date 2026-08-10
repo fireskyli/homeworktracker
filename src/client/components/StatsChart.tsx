@@ -19,14 +19,14 @@ ChartJS.register(
   BarElement, Title, Tooltip, Legend, Filler
 );
 
-export default function StatsChart() {
+export default function StatsChart({ showSubject = true }: { showSubject?: boolean }) {
   const [completionData, setCompletionData] = useState<{ date: string; rate: number }[]>([]);
   const [subjectData, setSubjectData] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetchCompletionRate('week').then(setCompletionData);
-    fetchSubjectStats().then(setSubjectData);
-  }, []);
+    if (showSubject) fetchSubjectStats().then(setSubjectData);
+  }, [showSubject]);
 
   const lineData = {
     labels: completionData.map(d => d.date.slice(5)),
@@ -75,25 +75,27 @@ export default function StatsChart() {
       </div>
 
       {/* 科目统计 */}
-      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-        <h3 className="text-sm font-medium text-gray-600 mb-3">各科目打卡次数</h3>
-        <div className="h-48">
-          {Object.keys(subjectData).length > 0 ? (
-            <Bar
-              data={barData}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-              }}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full text-gray-400">
-              暂无数据
-            </div>
-          )}
+      {showSubject && (
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+          <h3 className="text-sm font-medium text-gray-600 mb-3">各科目打卡次数</h3>
+          <div className="h-48">
+            {Object.keys(subjectData).length > 0 ? (
+              <Bar
+                data={barData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: { legend: { display: false } },
+                }}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400">
+                暂无数据
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

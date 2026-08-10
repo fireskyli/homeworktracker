@@ -10,7 +10,6 @@ import { ScheduleReminder } from './hooks/useSchedules';
 import NavBar from './components/NavBar';
 import HomePage from './pages/HomePage';
 import TasksPage from './pages/TasksPage';
-import StatsPage from './pages/StatsPage';
 import SettingsPage from './pages/SettingsPage';
 import WeeklyReportPage from './pages/WeeklyReportPage';
 import RedemptionPage from './pages/RedemptionPage';
@@ -130,7 +129,6 @@ export default function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/tasks" element={<TasksPage />} />
-            <Route path="/stats" element={<StatsPage />} />
             <Route path="/weekly" element={<WeeklyReportPage />} />
             <Route path="/redeem" element={<RedemptionPage />} />
             <Route path="/makeup" element={<MakeupPage />} />

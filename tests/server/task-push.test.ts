@@ -64,6 +64,7 @@ describe('学习任务 Markdown 构建', () => {
         suns: 5,
         byType: [{ name: '跳绳', emoji: '🪢', count: 2, suns: 5 }],
       },
+      minSuns: 3,
     });
     expect(md).toContain('励夏的课程');
     expect(md).toContain('共 3 项，完成 2 项（67%）');
@@ -76,7 +77,8 @@ describe('学习任务 Markdown 构建', () => {
     expect(md).toContain('今日运动');
     expect(md).toContain('🪢');
     expect(md).toContain('跳绳 2次 ☀️5');
-    expect(md).toContain('共 2 次，获得 5 ☀️');
+    expect(md).toContain('今日太阳：**☀️ 5 / 3**');
+    expect(md).toContain('已达到今日运动目标');
   });
 
   it('buildWeeklySummaryMarkdown：含周统计与科目分布', () => {

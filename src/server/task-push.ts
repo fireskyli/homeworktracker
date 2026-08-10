@@ -10,13 +10,15 @@ import {
   buildTodayTaskMarkdown,
   buildDailySummaryMarkdown,
   buildWeeklySummaryMarkdown,
+  buildExerciseReminderMarkdown,
 } from './notifier';
-import { getPushConfig, getSetting, setSetting } from './schedule-push';
+import { getPushConfig, getSetting, setSetting, getMinExerciseSuns } from './schedule-push';
 
 // Setting keys（task 前缀，与课程 dingtalk: 前缀区分）
 const KEY_LAST_DAILY_TASK = 'task:lastDailyTask';   // 上次推送今日任务的日期 YYYY-MM-DD
-const KEY_LAST_DAILY_SUMMARY = 'task:lastDailySummary'; // 上次推送今日总结的日期 YYYY-MM-DD
+const KEY_LAST_DAILY_SUMMARY = 'task:lastDailySummary'; // 上次推送今日总结的"日期+小时"标识 YYYY-MM-DD:HH，按小时去重（每6小时推送一次）
 const KEY_LAST_WEEKLY_SUMMARY = 'task:lastWeeklySummary'; // 上次推送周总结的周期标识
+const KEY_LAST_EXERCISE_REMIND = 'exercise:lastRemind'; // 上次运动提醒的半小时槽位标识 YYYY-MM-DD:HH:mm（每30分钟一次）
 
 export type TodayTaskItem = {
   id: number;
@@ -98,6 +100,7 @@ export async function getDailyStats(date: string, userId: number): Promise<{
     suns: number;
     byType: { name: string; emoji: string; count: number; suns: number }[];
   };
+  minSuns: number;
 }> {
   // 「今日应做任务」与今日任务推送同口径（复用 getTodayTasks 的重复规则筛选，按 date 驱动）
   const todayTasks = await getTodayTasks(userId, date);
@@ -150,10 +153,12 @@ export async function getDailyStats(date: string, userId: number): Promise<{
 
   const doneCount = items.length;
   const rate = tasks.length > 0 ? Math.round((doneCount / tasks.length) * 100) : 0;
+  const minSuns = await getMinExerciseSuns(userId);
   return {
     date, total: tasks.length, done: doneCount, rate, pointsEarned, items,
     undoneItems,
     exerciseSummary: { total: exercises.length, suns: exerciseSuns, byType: Object.values(exByType) },
+    minSuns,
   };
 }
 
@@ -323,13 +328,50 @@ export async function pushDailySummary(userId = STANDALONE_USER_ID): Promise<boo
 
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const slot = `${todayStr}:${String(now.getHours()).padStart(2, '0')}`;
   const stats = await getDailyStats(todayStr, userId);
   const md = buildDailySummaryMarkdown(stats);
   const res = await sendDingtalkMarkdown(config.webhook, '✅ 今日任务总结', md);
   if (res.ok) {
-    await setSetting(KEY_LAST_DAILY_SUMMARY, todayStr, userId);
+    await setSetting(KEY_LAST_DAILY_SUMMARY, slot, userId);
   }
   return res.ok;
+}
+
+/** 推送运动未达标提醒（19:00 后每 30 分钟）。返回是否推送成功。 */
+export async function pushExerciseReminder(userId = STANDALONE_USER_ID): Promise<boolean> {
+  const config = await getPushConfig(userId);
+  if (!config.enabled || !config.webhook) return false;
+
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const todayExercises = await prisma.exercise.findMany({ where: { date: todayStr, userId } });
+  const currentSuns = todayExercises.reduce((s, e) => s + (e.quality || 0), 0);
+  const minSuns = await getMinExerciseSuns(userId);
+
+  // 达标则不提醒
+  if (currentSuns >= minSuns) return false;
+
+  // 半小时槽位去重
+  const slot = `${todayStr}:${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes() < 30 ? 0 : 30).padStart(2, '0')}`;
+  const last = await getSetting(KEY_LAST_EXERCISE_REMIND, userId);
+  if (last === slot) return false;
+
+  const md = buildExerciseReminderMarkdown({ currentSuns, minSuns, deficit: minSuns - currentSuns });
+  const res = await sendDingtalkMarkdown(config.webhook, '🏃 运动提醒', md);
+  if (res.ok) {
+    await setSetting(KEY_LAST_EXERCISE_REMIND, slot, userId);
+  }
+  return res.ok;
+}
+
+/** 判断当前"日期+小时"槽位的今日总结是否已推送过（供每6小时调度去重） */
+export async function hasDailySummaryPushedAtHour(userId: number): Promise<boolean> {
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const slot = `${todayStr}:${String(now.getHours()).padStart(2, '0')}`;
+  const last = await getSetting(KEY_LAST_DAILY_SUMMARY, userId);
+  return last === slot;
 }
 
 /** 推送本周任务完成总结（自然周）。返回是否推送成功。 */

@@ -147,6 +147,7 @@ export function buildDailySummaryMarkdown(data: {
     suns: number;
     byType: { name: string; emoji: string; count: number; suns: number }[];
   };
+  minSuns: number;
 }): string {
   const lines = ['#### ✅ 今日任务完成总结 · ' + KEYWORD, ''];
   lines.push('**' + data.date + '** 共 ' + data.total + ' 项，完成 ' + data.done + ' 项（' + data.rate + '%）');
@@ -171,12 +172,21 @@ export function buildDailySummaryMarkdown(data: {
   }
 
   // 今日运动
-  if (data.exerciseSummary.total > 0) {
+  const exSuns = data.exerciseSummary.suns;
+  const minSuns = data.minSuns;
+  if (data.exerciseSummary.total > 0 || minSuns > 0) {
     lines.push('', '**今日运动：**');
-    data.exerciseSummary.byType.forEach(t => {
-      lines.push(t.emoji + ' ' + t.name + ' ' + t.count + '次 ☀️' + t.suns);
-    });
-    lines.push('共 ' + data.exerciseSummary.total + ' 次，获得 ' + data.exerciseSummary.suns + ' ☀️');
+    if (data.exerciseSummary.byType.length > 0) {
+      data.exerciseSummary.byType.forEach(t => {
+        lines.push(t.emoji + ' ' + t.name + ' ' + t.count + '次 ☀️' + t.suns);
+      });
+    }
+    lines.push('今日太阳：**☀️ ' + exSuns + ' / ' + minSuns + '**');
+    if (exSuns < minSuns) {
+      lines.push('⚠️ 还差 **' + (minSuns - exSuns) + '** 个太阳达到今日运动目标，记得动起来！');
+    } else {
+      lines.push('🎉 已达到今日运动目标，太棒了！');
+    }
   }
 
   lines.push('', '继续坚持，明天更棒！💪');
@@ -243,5 +253,17 @@ export function buildWeeklySummaryMarkdown(data: {
   }
 
   lines.push('继续坚持，下周更棒！🌟');
+  return lines.join('\n');
+}
+/** 生成运动未达标提醒 Markdown（19:00 后每 30 分钟推送） */
+export function buildExerciseReminderMarkdown(data: {
+  currentSuns: number;
+  minSuns: number;
+  deficit: number;
+}): string {
+  const lines = ['#### 🏃 运动提醒 · ' + KEYWORD, ''];
+  lines.push('今日太阳：**☀️ ' + data.currentSuns + ' / ' + data.minSuns + '**');
+  lines.push('还差 **' + data.deficit + '** 个太阳就达标啦，动起来吧！💪');
+  lines.push('', '完成运动后记得打卡记录哦 ☀️');
   return lines.join('\n');
 }

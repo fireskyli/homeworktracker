@@ -7,7 +7,6 @@ const navItems = [
   { path: '/schedule', icon: '📅', label: '课程表' },
   { path: '/weekly', icon: '📊', label: '周报' },
   { path: '/redeem', icon: '🎁', label: '兑换' },
-  { path: '/stats', icon: '📊', label: '统计' },
   { path: '/settings', icon: '⚙️', label: '设置' },
 ];
 

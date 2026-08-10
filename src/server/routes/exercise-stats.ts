@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../db';
+import { getMinExerciseSuns, saveMinExerciseSuns } from '../schedule-push';
 
 export const exerciseStatsRouter = Router();
 
@@ -272,5 +273,26 @@ exerciseStatsRouter.get('/weekly', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: '运动周报生成失败' });
+  }
+});
+
+// 获取每日最低太阳数门槛
+exerciseStatsRouter.get('/min-suns', async (req, res) => {
+  try {
+    const minSuns = await getMinExerciseSuns(req.userId);
+    res.json({ minSuns });
+  } catch (err) {
+    res.status(500).json({ error: '获取运动目标失败' });
+  }
+});
+
+// 保存每日最低太阳数门槛
+exerciseStatsRouter.put('/min-suns', async (req, res) => {
+  try {
+    const { minSuns } = req.body;
+    const value = await saveMinExerciseSuns(Number(minSuns), req.userId);
+    res.json({ minSuns: value });
+  } catch (err) {
+    res.status(500).json({ error: '保存运动目标失败' });
   }
 });

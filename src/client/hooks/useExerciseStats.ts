@@ -70,3 +70,20 @@ export async function fetchExerciseWeekly(date?: string): Promise<ExerciseWeekly
   if (!res.ok) throw new Error('获取运动周报失败');
   return res.json();
 }
+
+export async function fetchMinExerciseSuns(): Promise<number> {
+  const res = await apiFetch(`${API}/min-suns`);
+  if (!res.ok) throw new Error('获取运动目标失败');
+  const data = await res.json();
+  return data.minSuns;
+}
+
+export async function saveMinExerciseSuns(minSuns: number): Promise<number> {
+  const res = await apiFetch(`${API}/min-suns`, {
+    method: 'PUT',
+    body: JSON.stringify({ minSuns }),
+  });
+  if (!res.ok) throw new Error('保存运动目标失败');
+  const data = await res.json();
+  return data.minSuns;
+}

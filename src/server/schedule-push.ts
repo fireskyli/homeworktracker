@@ -19,8 +19,10 @@ import {
   pushTodayTasks,
   pushDailySummary,
   pushWeeklySummary,
+  pushExerciseReminder,
   hasTodayTaskPushed,
   hasDailySummaryPushed,
+  hasDailySummaryPushedAtHour,
   hasWeeklySummaryPushed,
 } from './task-push';
 
@@ -30,6 +32,8 @@ const KEY_ENABLED = 'dingtalk:enabled';
 const KEY_LAST_DAILY = 'dingtalk:lastDaily';   // 上次推送今日课表的日期 YYYY-MM-DD
 const KEY_LAST_WEEKLY = 'dingtalk:lastWeekly'; // 上次推送7天总览的日期 YYYY-MM-DD
 const KEY_LAST_CLASS = 'dingtalk:lastClass';   // 上次上课提醒的标识（由调用方生成）
+const KEY_MIN_EXERCISE_SUNS = 'exercise:minSuns'; // 每日最低太阳数门槛
+const DEFAULT_MIN_EXERCISE_SUNS = 3;             // 默认每日最低太阳数
 
 const DAILY_PUSH_TIME = { hour: 7, minute: 0 }; // 每天 07:00 推送今日课表
 const CLASS_REMIND_MIN = 60;                     // 上课前 1 小时提醒
@@ -89,6 +93,20 @@ export async function setSetting(key: string, value: string, userId: number): Pr
     update: { value },
     create: { key, value, userId },
   });
+}
+
+/** 获取每日最低太阳数门槛（默认 DEFAULT_MIN_EXERCISE_SUNS） */
+export async function getMinExerciseSuns(userId: number): Promise<number> {
+  const raw = await getSetting(KEY_MIN_EXERCISE_SUNS, userId);
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : DEFAULT_MIN_EXERCISE_SUNS;
+}
+
+/** 保存每日最低太阳数门槛 */
+export async function saveMinExerciseSuns(value: number, userId: number): Promise<number> {
+  const n = Number.isFinite(value) && value >= 0 ? Math.floor(value) : DEFAULT_MIN_EXERCISE_SUNS;
+  await setSetting(KEY_MIN_EXERCISE_SUNS, String(n), userId);
+  return n;
 }
 
 /** 获取某用户今天的课程（按发生规则匹配） */
@@ -264,6 +282,7 @@ export function startSchedulePush(userId = STANDALONE_USER_ID): void {
   // 学习任务调度：
   // 07:00 推今日学习任务；21:00 推今日完成总结；每周日 22:00 推本周总结
   const taskTimer = setInterval(() => {
+    void (async () => {
     const now = new Date();
     const h = now.getHours();
     const m = now.getMinutes();
@@ -271,14 +290,21 @@ export function startSchedulePush(userId = STANDALONE_USER_ID): void {
     if (h === 7 && m === 0) {
       void runSafely(() => pushTodayTasks(userId), '今日学习任务推送');
     }
-    // 21:00 今日完成总结
-    if (h === 21 && m === 0) {
-      void runSafely(() => pushDailySummary(userId), '今日任务总结推送');
+    // 每日任务总结：07:00 / 13:00 / 19:00 各推一次（按小时去重）
+    if ([7, 13, 19].includes(h) && m === 0) {
+      if (!(await hasDailySummaryPushedAtHour(userId))) {
+        void runSafely(() => pushDailySummary(userId), '今日任务总结推送');
+      }
     }
     // 每周日 22:00 本周总结
     if (now.getDay() === 0 && h === 22 && m === 0) {
       void runSafely(() => pushWeeklySummary(userId), '本周任务总结推送');
     }
+    // 19:00 后每 30 分钟推送运动未达标提醒
+    if (h >= 19 && (m === 0 || m === 30)) {
+      void runSafely(() => pushExerciseReminder(userId), '运动未达标提醒');
+    }
+    })();
   }, 60 * 1000);
 
   // 防止定时器阻止进程退出
