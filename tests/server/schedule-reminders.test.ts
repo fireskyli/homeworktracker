@@ -102,6 +102,36 @@ describe('schedule-reminders 纯函数', () => {
     expect(due.some(d => d.kind === 'day')).toBe(true);
   });
 
+  it('computeDueReminders：带 endDate 的每周课程扫不到足够次数不死循环', () => {
+    // 回归：repeatDays 在有限日期范围内匹配次数达不到 lookForwardOcc(60) 时，
+    // 旧实现 for 循环 d 无限向后扫描直到 Date 溢出，导致死循环（CPU 100%）。
+    // 带 endDate 的课程（如 2026-08-10 ~ 2026-09-05 工作日）触发该 bug。
+    const now = timeOfDay('2026-08-10', '09:00');
+    const rule: ReminderRule = {
+      repeatType: 'weekly',
+      repeatDays: JSON.stringify([1, 2, 3, 4, 5]),
+      date: null,
+      startDate: '2026-08-10',
+      endDate: '2026-09-05',
+      startTime: '20:30',
+      remindDayBefore: 0,
+      remindMinBefore: 60,
+    };
+    // 限制单次执行时间，若死循环则测试框架会超时；这里用短超时保护
+    const timeout = 2000;
+    const start = Date.now();
+    const due = computeDueReminders([rule], now);
+    expect(Date.now() - start).toBeLessThan(timeout);
+    expect(Array.isArray(due)).toBe(true);
+  });
+
+  it('computeDueReminders：空 repeatDays 的每周课程不死循环', () => {
+    // 回归：repeatDays=[] 时 matchesDate 永远 false，旧实现死循环
+    const now = timeOfDay('2026-08-10', '09:00');
+    const due = computeDueReminders([weekly([], '20:30', 0, 60)], now);
+    expect(Array.isArray(due)).toBe(true);
+  });
+
   it('computeDueReminders：同一天同时命中 day 和 minute 会返回两条', () => {
     // now = 08-03 16:00（课前30分钟内），且本身处于 day 窗口前一晚？不，day 窗口已过。
     // 验证：设 now 为 08-02 20:00 只命中 day；设 now 为 08-03 16:00 只命中 minute。

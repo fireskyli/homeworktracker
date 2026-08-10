@@ -105,8 +105,14 @@ export function computeDueReminders(
     scanStart.setDate(scanStart.getDate() - lookBackDays);
     scanStart.setHours(0, 0, 0, 0);
 
+    // 扫描上限：最坏情况每周只 match 1 天，找够 lookForwardOcc 次最多需要 lookForwardOcc*7 天。
+    // 超过该上限即停止，避免 repeatDays 匹配次数不足或带 endDate 的课程让 d 无限向后扫描
+    // 直到 Date 溢出，造成死循环（CPU 100%、服务无响应）。
+    const scanEnd = new Date(now);
+    scanEnd.setDate(scanEnd.getDate() + lookForwardOcc * 7);
+
     let found = 0;
-    for (let d = new Date(scanStart); found < lookForwardOcc; d.setDate(d.getDate() + 1)) {
+    for (let d = new Date(scanStart); found < lookForwardOcc && d <= scanEnd; d.setDate(d.getDate() + 1)) {
       const y = d.getFullYear();
       const mo = String(d.getMonth() + 1).padStart(2, '0');
       const da = String(d.getDate()).padStart(2, '0');
