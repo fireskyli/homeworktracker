@@ -158,6 +158,61 @@ export async function getDailyStats(date: string, userId: number): Promise<{
 }
 
 /**
+ * 计算某用户某自然周（周一~周日）内"应当完成"的任务集合。
+ * 复用 getTodayTasks 的重复规则判定（按周内每一天驱动），保证：
+ * - 过期的一次性任务（startDate 早已过去）不会出现在本周任务里
+ * - 只有本周按 repeatType/repeatDays 应做的任务才算数
+ * 返回 { id, name, subject, emoji, points } 列表。
+ */
+async function getWeekTasks(weekStart: string, userId: number): Promise<{ id: number; name: string; subject: string; emoji: string; points: number }[]> {
+  const monday = new Date(weekStart + 'T00:00:00');
+  const dayStrs: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    dayStrs.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+  }
+
+  const tasks = await prisma.task.findMany({
+    where: { isActive: 1, userId },
+    orderBy: { sortOrder: 'asc' },
+  });
+  const allCheckins = await prisma.checkIn.findMany({
+    where: { userId },
+    select: { taskId: true, date: true },
+  });
+
+  // 每个任务在本周哪几天"应做"
+  const shouldDoDays: Record<number, string[]> = {};
+  for (const dayStr of dayStrs) {
+    const now = new Date(dayStr + 'T00:00:00');
+    const dayOfWeek = now.getDay();
+    const completedBeforeToday = new Set(
+      allCheckins.filter(c => c.date < dayStr).map(c => c.taskId)
+    );
+    for (const task of tasks) {
+      if (task.startDate && dayStr < task.startDate) continue;
+      if (task.endDate && dayStr > task.endDate) continue;
+      let should = false;
+      if (task.repeatType === 'daily') should = true;
+      else if (task.repeatType === 'once') {
+        const taskDate = task.startDate || task.createdAt.slice(0, 10);
+        should = taskDate <= dayStr && !completedBeforeToday.has(task.id);
+      } else if (task.repeatType === 'weekly') {
+        let days: number[] = [];
+        try { days = JSON.parse(task.repeatDays); } catch { days = []; }
+        should = days.includes(dayOfWeek);
+      }
+      if (should) (shouldDoDays[task.id] = shouldDoDays[task.id] || []).push(dayStr);
+    }
+  }
+
+  return tasks
+    .filter(t => shouldDoDays[t.id] && shouldDoDays[t.id].length > 0)
+    .map(t => ({ id: t.id, name: t.name, subject: t.subject, emoji: t.emoji, points: t.points || 0 }));
+}
+
+/**
  * 计算某用户某自然周（周一~周日）的任务完成总结。
  * weekStart 为该周周一 YYYY-MM-DD。
  */
@@ -186,7 +241,7 @@ export async function getWeeklyStats(
       where: { date: { gte: weekStart, lte: weekEnd }, userId },
       include: { task: { select: { name: true, subject: true, emoji: true, points: true } } },
     }),
-    prisma.task.findMany({ where: { isActive: 1, userId } }),
+    getWeekTasks(weekStart, userId), // 本周应做任务（不含已过期的一次性任务）
     prisma.exercise.findMany({
       where: { date: { gte: weekStart, lte: weekEnd }, userId },
       include: { exerciseType: { select: { name: true, emoji: true } } },

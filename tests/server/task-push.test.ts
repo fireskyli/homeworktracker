@@ -293,6 +293,42 @@ describe('学习任务统计函数', () => {
     expect(stats.exerciseSummary.total).toBe(1);
     expect(stats.exerciseSummary.suns).toBe(2);
   });
+
+  it('getWeeklyStats：过期的一次性任务不计入本周任务（回归）', async () => {
+    // 创建本周应做的 daily 任务
+    const dailyTask = await prisma.task.create({
+      data: {
+        name: '每日阅读', subject: '语文', emoji: '📖', repeatType: 'daily', points: 2,
+        userId: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      },
+    });
+    // 创建早已过期并已完成的一次性任务（startDate 在很久以前 + 已打卡），
+    // 它不应再出现在"本周应做/未完成"列表里。
+    const expiredTask = await prisma.task.create({
+      data: {
+        name: '期末卷', subject: '语文', emoji: '📚', repeatType: 'once',
+        startDate: '2020-01-01', points: 3,
+        userId: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      },
+    });
+    await prisma.checkIn.create({
+      data: {
+        taskId: expiredTask.id, date: '2020-01-01', quality: 3, userId: 0,
+        completedAt: new Date().toISOString(),
+      },
+    });
+
+    // 本周一
+    const dow = new Date().getDay() || 7;
+    const monday = new Date();
+    monday.setDate(monday.getDate() - dow + 1);
+    const weekStart = monday.toISOString().split('T')[0];
+
+    const stats = await getWeeklyStats(weekStart, 0);
+    // 已完成过的过期 once 任务不应出现在 taskDetails 里
+    expect(stats.taskDetails.some(t => t.name === '期末卷')).toBe(false);
+    expect(stats.taskDetails.some(t => t.name === '每日阅读')).toBe(true);
+  });
 });
 
 describe('学习任务推送', () => {
