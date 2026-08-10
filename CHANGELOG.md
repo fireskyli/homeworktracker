@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.5.0] - 2026-08-10
+
+### 重要修复：服务启动后无响应（前端卡"加载中"）
+
+**根因**：`computeDueReminders`（`src/server/schedule-reminders.ts`）中周期性课程的扫描 `for` 循环以 `found < lookForwardOcc` 为终止条件，但 `found` 仅在 `matchesDate` 为 true 且课程未结束时递增。当课程带 `endDate`（有限日期范围内匹配次数达不到 60 次）或 `repeatDays` 为空时，`d` 会无限 `setDate(+1)` 向后扫描直到 Date 溢出，导致**死循环、CPU 100%、服务无响应**，每分钟一次的 `pushClassReminders` 定时器首次触发即卡死。
+
+**影响**：导入含带 `endDate` 的 weekly 课程或含周日（0）repeatDays 的旧备份后，后端首次定时器触发即死循环，前端所有请求超时，页面一直显示"加载中"，无法使用。
+
+**修复**：给周期性扫描增加硬性上限 `scanEnd = now + lookForwardOcc * 7` 天，超过即停止扫描，既保留"找够未来次数"的语义，又杜绝无限扫描。
+
+**验证**：新增 2 个回归测试（带 endDate 的 weekly / 空 repeatDays），修复前死循环崩溃、修复后通过；服务实测 132 秒跨多个定时器周期稳定，CPU 正常。
+
+### 其他修复
+
+- 备份导入路径不一致导致恢复失败（`routes/backup.ts` 用 `__dirname` 相对路径，与 `backup.ts` 的 `BACKUP_DIR` 不一致，统一改用 `BACKUP_DIR`）
+- dev 模式后端与前端文件监视共存时启动异常（`dev:server` 改用 `node --watch`）
+
+### 仓库
+
+- 修复 README 误导性的"零配置"描述，补充 `.env` 创建说明
+
 ## [0.4.0] - 2026-08-09
 
 ### 新增
